@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/niksmo/receipt/internal/schema"
@@ -8,7 +9,7 @@ import (
 )
 
 type Sender interface {
-	Send(to string, msg []byte) error
+	Send(ctx context.Context, to string, payload []byte) error
 }
 
 type EmailNotifier struct {
@@ -16,22 +17,21 @@ type EmailNotifier struct {
 	s   Sender
 }
 
-func NewEmailProvider(log logger.Logger, sender Sender) EmailNotifier {
+func NewEmailNotifier(log logger.Logger, sender Sender) EmailNotifier {
 	return EmailNotifier{log, sender}
 }
 
-func (n EmailNotifier) Send(receipt schema.Receipt) error {
-	const op = "EmailNotifier.Send"
-	// make msg
-	msg := []byte("hello wolrd")
+func (n EmailNotifier) SendReceipt(ctx context.Context, receipt schema.Receipt) error {
+	const op = "EmailNotifier.SendReceipt"
+	payload := n.renderReciept(receipt)
 
-	err := n.s.Send(receipt.BuyerEmail, msg)
+	err := n.s.Send(ctx, receipt.BuyerEmail, payload)
 	if err != nil {
-		return fmt.Errorf("%s: failed to send email: %w", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
 }
 
-func (n EmailNotifier) createMessage(receipt schema.Receipt) []byte {
-	return nil
+func (n EmailNotifier) renderReciept(receipt schema.Receipt) []byte {
+	return renderReciept(receipt)
 }

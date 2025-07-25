@@ -13,17 +13,17 @@
 ={{cost .TotalPrice | printf "%.2f"}}
 {{if .TaxRate -}}
 в т.ч. НДС {{.TaxRate}}
-= {{$.ProductTax . | printf "%.2f"}}
+= {{cost .TaxValue | printf "%.2f"}}
 {{else -}}
 без НДС
 {{end -}}
 {{end}}
 --
-ИТОГ ={{.TotalPrice | printf "%.2f"}}
-{{range .Taxes -}}
+ИТОГ ={{totalPrice .Products | printf "%.2f"}}
+{{range taxes .Products -}}
 в т.ч. НДС {{.Rate}} ={{.Value | printf "%.2f"}}
 {{end -}}
-Безналичными ={{.TotalPrice | printf "%.2f"}}
+Безналичными ={{totalPrice .Products | printf "%.2f"}}
 
 Электронный адрес покупателя
 {{lower .BuyerEmail}}
