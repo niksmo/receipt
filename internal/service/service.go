@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/niksmo/receipt/internal/schema"
+	"github.com/niksmo/receipt/internal/scheme"
 )
 
 type Sender interface {
@@ -19,7 +19,7 @@ func NewEmailNotifier(sender Sender) EmailNotifier {
 	return EmailNotifier{sender}
 }
 
-func (n EmailNotifier) SendReceipt(ctx context.Context, receipt schema.Receipt) error {
+func (n EmailNotifier) SendReceipt(ctx context.Context, receipt scheme.Receipt) error {
 	const op = "EmailNotifier.SendReceipt"
 	payload := n.renderReciept(receipt)
 
@@ -30,6 +30,6 @@ func (n EmailNotifier) SendReceipt(ctx context.Context, receipt schema.Receipt) 
 	return nil
 }
 
-func (n EmailNotifier) renderReciept(receipt schema.Receipt) []byte {
+func (n EmailNotifier) renderReciept(receipt scheme.Receipt) []byte {
 	return renderReciept(receipt)
 }

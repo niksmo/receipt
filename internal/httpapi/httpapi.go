@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/niksmo/receipt/internal/schema"
+	"github.com/niksmo/receipt/internal/scheme"
 	"github.com/niksmo/receipt/pkg/logger"
 )
 
 type ReceiptSender interface {
-	SendReceipt(context.Context, schema.Receipt) error
+	SendReceipt(context.Context, scheme.Receipt) error
 }
 
 type MailReceiptHandler struct {
@@ -32,7 +32,7 @@ func (h MailReceiptHandler) receiptPOSTv1(
 	const op = "MailReceiptHandler.receiptPOSTv1"
 	log := h.log.WithOp(op)
 
-	var receipt schema.Receipt
+	var receipt scheme.Receipt
 
 	if r.Header.Get("Content-Type") != "application/json" {
 		errStr := "invalid media type"
