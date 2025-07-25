@@ -36,9 +36,7 @@ func (t SMTPTransmitter) send(ctx context.Context, to string, msg []byte) error 
 		return ctx.Err()
 	}
 
-	doneStream := make(chan error)
-	defer close(doneStream)
-
+	doneStream := make(chan error, 1)
 	go t.sendMail(doneStream, to, msg)
 
 	select {
@@ -49,11 +47,12 @@ func (t SMTPTransmitter) send(ctx context.Context, to string, msg []byte) error 
 	}
 }
 
-func (t SMTPTransmitter) sendMail(done chan error, to string, msg []byte) {
+func (t SMTPTransmitter) sendMail(done chan<- error, to string, msg []byte) {
 	auth := smtp.PlainAuth("", t.login, t.password, t.host)
 	done <- smtp.SendMail(
 		t.addr(), auth, "", []string{to}, msg,
 	)
+	close(done)
 }
 
 func (t SMTPTransmitter) addr() string {
