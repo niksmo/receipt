@@ -9,7 +9,7 @@
 {{upper .CalculationSign}}
 {{range .Products}}
 {{lower .Name}}
-{{.Quantity}} x {{cost .PricePerUnit | printf "%.2f"}}
+{{.Quantity}} x {{cost .UnitPrice | printf "%.2f"}}
 ={{cost .TotalPrice | printf "%.2f"}}
 {{if .TaxRate -}}
 в т.ч. НДС {{.TaxRate}}
@@ -26,7 +26,7 @@
 Безналичными ={{totalPrice .Products | printf "%.2f"}}
 
 Электронный адрес покупателя
-{{lower .BuyerEmail}}
+{{lower .CustomerEmail}}
 
 ФН: {{.FiscalDeviceNumber}}
 РН ККТ: {{.CashRegisterNumber}}

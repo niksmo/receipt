@@ -11,16 +11,16 @@ type SMTPTransmitter struct {
 }
 
 func NewSMTPTransmitter(login, password, host, port string) SMTPTransmitter {
-	return SMTPTransmitter{}
+	return SMTPTransmitter{login, password, host, port}
 }
 
 func (t SMTPTransmitter) Send(ctx context.Context, to string, sub string, payload []byte) error {
 	const op = "SMTPTransmitter.Send"
 
-	to = fmt.Sprintf("To: %s\r\n", to)
-	sub = fmt.Sprintf("Subject: %s\r\n", sub)
+	msgTo := fmt.Sprintf("To: %s\r\n", to)
+	msgSub := fmt.Sprintf("Subject: %s\r\n", sub)
 
-	msg := []byte(to + sub)
+	msg := []byte(msgTo + msgSub)
 	msg = append(msg, payload...)
 	msg = append(msg, []byte("\r\n")...)
 
@@ -32,18 +32,14 @@ func (t SMTPTransmitter) Send(ctx context.Context, to string, sub string, payloa
 }
 
 func (t SMTPTransmitter) send(ctx context.Context, to string, msg []byte) error {
-	auth := smtp.PlainAuth("",
-		t.login, t.password, t.host)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 
 	doneStream := make(chan error)
 	defer close(doneStream)
 
-	go func(done chan error) {
-		err := smtp.SendMail(
-			t.addr(), auth, "", []string{to}, msg,
-		)
-		done <- err
-	}(doneStream)
+	go t.sendMail(doneStream, to, msg)
 
 	select {
 	case <-ctx.Done():
@@ -51,6 +47,13 @@ func (t SMTPTransmitter) send(ctx context.Context, to string, msg []byte) error 
 	case err := <-doneStream:
 		return err
 	}
+}
+
+func (t SMTPTransmitter) sendMail(done chan error, to string, msg []byte) {
+	auth := smtp.PlainAuth("", t.login, t.password, t.host)
+	done <- smtp.SendMail(
+		t.addr(), auth, "", []string{to}, msg,
+	)
 }
 
 func (t SMTPTransmitter) addr() string {

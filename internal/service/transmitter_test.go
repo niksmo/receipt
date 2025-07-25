@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -9,7 +10,19 @@ import (
 )
 
 func TestSMTPTransmitter(t *testing.T) {
-	smtpTransmitter := NewSMTPTransmitter()
+	login := os.Getenv("TEST_RECEIPT_LOGIN")
+	password := os.Getenv("TEST_RECEIPT_PASSWORD")
+	host := os.Getenv("TEST_RECEIPT_HOST")
+	port := os.Getenv("TEST_RECEIPT_PORT")
+	to := os.Getenv("TEST_RECEIPT_TO")
+
+	for _, v := range []string{login, password, host, port, to} {
+		if v == "" {
+			t.Skip("ENV variables not set")
+		}
+	}
+
+	smtpTransmitter := NewSMTPTransmitter(login, password, host, port)
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	data := []byte(`Кассовый чек № 1234
@@ -53,6 +66,7 @@ happy_customer@mail.ru
 ФД: 16415
 ФПД: 1805600812
 `)
-	err := smtpTransmitter.Send(ctx, "n.smolov@gmail.com", data)
+	subject := "test receipt"
+	err := smtpTransmitter.Send(ctx, to, subject, data)
 	assert.NoError(t, err)
 }
