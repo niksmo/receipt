@@ -11,9 +11,7 @@ import (
 )
 
 func main() {
-
 	config := config.Load()
-
 	logger := logger.New(config.LogLevel)
 
 	ctx, cancel := signal.NotifyContext(

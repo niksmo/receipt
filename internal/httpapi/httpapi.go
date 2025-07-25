@@ -45,7 +45,7 @@ func (h MailReceiptHandler) receiptPOSTv1(
 	if err != nil {
 		errStr := "invalid json data"
 		http.Error(w, "invalid json data", http.StatusBadRequest)
-		log.Info().Msg(errStr)
+		log.Info().Err(err).Msg(errStr)
 		return
 	}
 
