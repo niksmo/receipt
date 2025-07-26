@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/niksmo/receipt/internal/schema"
+	"github.com/niksmo/receipt/internal/scheme"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,7 +15,7 @@ func TestRenderer(t *testing.T) {
 	date, err := time.Parse(dateLayout, "07.25.25 14:40")
 
 	require.NoError(t, err)
-	receipt := schema.Receipt{
+	receipt := scheme.Receipt{
 		Number:             1234,
 		Date:               date,
 		Organization:       "ООО Ромашка",
@@ -28,7 +28,7 @@ func TestRenderer(t *testing.T) {
 		CashRegisterNumber: "0007768750034436",
 		FiscalDocument:     "16415",
 		FiscalAttribute:    "1805600812",
-		Products: []schema.Product{
+		Products: []scheme.Product{
 			{
 				Name:       "тапки синие размер 42",
 				Quantity:   1,
