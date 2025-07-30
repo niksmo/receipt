@@ -1,4 +1,4 @@
-package scheme
+package ports
 
 import "time"
 
@@ -12,8 +12,8 @@ type Product struct {
 }
 
 type Receipt struct {
-	Number             int       `json:"number"` // номер чека
-	Date               time.Time `json:"date"`
+	Number             int       `json:"number"`           // номер чека
+	Date               time.Time `json:"date"`             // RFC3339 "2006-01-02T15:04:05Z07:00"
 	Organization       string    `json:"organization"`     // название организации
 	PaymentAddress     string    `json:"payment_address"`  // адрес расчетов
 	TaxpayerNumber     string    `json:"taxpayer_number"`  // ИНН

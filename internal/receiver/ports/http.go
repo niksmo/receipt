@@ -1,4 +1,4 @@
-package httpapi
+package ports
 
 import (
 	"context"
@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/niksmo/receipt/internal/scheme"
 	"github.com/niksmo/receipt/pkg/logger"
 )
 
+// register http handler
+
 type ReceiptSender interface {
-	SendReceipt(context.Context, scheme.Receipt) error
+	SendReceipt(context.Context, Receipt) error
 }
 
 type MailReceiptHandler struct {
@@ -32,7 +33,7 @@ func (h MailReceiptHandler) receiptPOSTv1(
 	const op = "MailReceiptHandler.receiptPOSTv1"
 	log := h.log.WithOp(op)
 
-	var receipt scheme.Receipt
+	var receipt Receipt
 
 	if r.Header.Get("Content-Type") != "application/json" {
 		errStr := "invalid media type"

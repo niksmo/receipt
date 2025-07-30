@@ -3,11 +3,9 @@ package service
 import (
 	"bytes"
 	_ "embed"
-	"html/template"
 	"strings"
+	"text/template"
 	"time"
-
-	"github.com/niksmo/receipt/internal/scheme"
 )
 
 const dateLayout = "01.02.06 15:04"
@@ -17,10 +15,10 @@ type tax struct {
 	Value float64
 }
 
-//go:embed receipt.template
+//go:embed text.template
 var receiptTemplate string
 
-func renderReciept(receipt scheme.Receipt) []byte {
+func renderReciept(receipt Receipt) []byte {
 	funcMap := template.FuncMap{
 		"formatDate": formatDate,
 		"upper":      strings.ToUpper,
@@ -46,7 +44,7 @@ func cost(price int) float64 {
 	return float64(price) / 100
 }
 
-func totalPrice(products []scheme.Product) float64 {
+func totalPrice(products []Product) float64 {
 	var sum int
 	for _, p := range products {
 		sum += p.TotalPrice
@@ -54,7 +52,7 @@ func totalPrice(products []scheme.Product) float64 {
 	return float64(sum) / 100
 }
 
-func taxes(products []scheme.Product) []tax {
+func taxes(products []Product) []tax {
 	var taxes []tax
 	for _, p := range products {
 		if p.TaxRate == "" {
