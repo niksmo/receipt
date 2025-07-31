@@ -65,7 +65,7 @@ type Receipt struct {
 	Products           []Product
 }
 
-func NewReceipt(rd ReceiptData) Receipt {
+func NewReceipt(rd ReceiptData) (Receipt, error) {
 	r := Receipt{
 		UUID:               uuid.NewString(),
 		Organization:       rd.Organization,
@@ -81,7 +81,7 @@ func NewReceipt(rd ReceiptData) Receipt {
 	r.setTotalPrice(rd.Products)
 	r.setProducts(rd.Products)
 	r.setTaxes(rd.Products)
-	return r
+	return r, nil
 }
 
 func (r *Receipt) setDate(t time.Time) {
