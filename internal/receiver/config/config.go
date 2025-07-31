@@ -1,3 +1,8 @@
 package config
 
-// server config and topic config
+// server config
+//   address
+
+// provider config
+//   brokers
+//   topic
