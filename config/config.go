@@ -1,8 +1,12 @@
 package config
 
+// log level
+
 // server config
 //   address
 
-// provider config
+// producer config
 //   brokers
 //   topic
+
+// consumer config

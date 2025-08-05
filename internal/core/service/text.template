@@ -1,5 +1,5 @@
 Кассовый чек № {{.Number}}
-{{.Date}}
+{{formatDate .Date}}
 
 {{.Organization}}
 {{.PaymentAddress}}
@@ -9,21 +9,21 @@
 {{upper .CalculationSign}}
 {{range .Products}}
 {{.Name}}
-{{.Quantity}} x {{.UnitPrice | printf "%.2f"}}
-={{.TotalPrice | printf "%.2f"}}
+{{.Quantity}} x {{cost .UnitPrice | printf "%.2f"}}
+={{cost .TotalPrice | printf "%.2f"}}
 {{if .TaxRate -}}
 в т.ч. НДС {{.TaxRate}}
-= {{.TaxValue | printf "%.2f"}}
+= {{cost .TaxValue | printf "%.2f"}}
 {{else -}}
 без НДС
 {{end -}}
 {{end}}
 --
-ИТОГ ={{.TotalPrice | printf "%.2f"}}
+ИТОГ ={{cost .TotalPrice | printf "%.2f"}}
 {{range .TotalTax -}}
-в т.ч. НДС {{.TaxRate}} ={{.TaxValue | printf "%.2f"}}
+в т.ч. НДС {{.TaxRate}} ={{cost .TaxValue | printf "%.2f"}}
 {{end -}}
-Безналичными ={{.TotalPrice | printf "%.2f"}}
+Безналичными ={{cost .TotalPrice | printf "%.2f"}}
 
 Электронный адрес покупателя
 {{lower .CustomerEmail}}

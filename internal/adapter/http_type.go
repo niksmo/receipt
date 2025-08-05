@@ -1,4 +1,4 @@
-package ports
+package adapter
 
 import "time"
 
@@ -19,10 +19,10 @@ type Receipt struct {
 	TaxpayerNumber     string    `json:"taxpayer_number"`  // ИНН
 	TaxationType       string    `json:"taxation_type"`    // вид налогообложения
 	CalculationSign    string    `json:"calculation_sign"` // признак расчета
-	Products           []Product `json:"products"`
 	CustomerEmail      string    `json:"customer_email"`
 	FiscalDeviceNumber string    `json:"fiscal_device_number"` // ФН
 	CashRegisterNumber string    `json:"cash_register_number"` // РН ККТ
 	FiscalDocument     string    `json:"fiscal_document"`      // ФД
 	FiscalAttribute    string    `json:"fiscal_attribute"`     // ФПД
+	Products           []Product `json:"products"`
 }

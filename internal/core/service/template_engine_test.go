@@ -4,19 +4,23 @@ package service_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
-	"github.com/niksmo/receipt/internal/mail-sender/domain"
-	"github.com/niksmo/receipt/internal/mail-sender/service"
+	"github.com/niksmo/receipt/internal/core/domain"
+	"github.com/niksmo/receipt/internal/core/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRenderer(t *testing.T) {
+	date, err := time.Parse(service.DateLayout, "07.25.25 14:40")
+	require.NoError(t, err)
+
 	receipt := domain.Receipt{
 		UUID:               uuid.NewString(),
 		Number:             1234,
-		Date:               "07.25.25 14:40",
+		Date:               date,
 		Organization:       "ООО Ромашка",
 		PaymentAddress:     "г. Москва, ул. Правды, д. 1",
 		TaxpayerNumber:     "7745123451234",
@@ -29,46 +33,35 @@ func TestRenderer(t *testing.T) {
 		FiscalAttribute:    "1805600812",
 		Products: []domain.Product{
 			{
-				Name:       "тапки синие размер 42",
+				Name:       "тапочки синие размер 42",
 				Quantity:   1,
-				UnitPrice:  230,
-				TotalPrice: 230,
+				UnitPrice:  23000,
+				TotalPrice: 23000,
 			},
 			{
 				Name:       "очки солнцезащитные",
 				Quantity:   1,
-				UnitPrice:  6345,
-				TotalPrice: 6345,
-				Tax: domain.Tax{
-					TaxRate:  "5/105",
-					TaxValue: 317.25,
-				},
+				UnitPrice:  634500,
+				TotalPrice: 634500,
+				TaxRate:    "5/105",
+				TaxValue:   31725,
 			},
 			{
 				Name:       "мыло душистое",
 				Quantity:   5,
-				UnitPrice:  80,
-				TotalPrice: 400,
-				Tax: domain.Tax{
-					TaxRate:  "20",
-					TaxValue: 80,
-				},
+				UnitPrice:  8000,
+				TotalPrice: 40000,
+				TaxRate:    "20",
+				TaxValue:   8000,
 			},
 			{
 				Name:       "туалетная вода",
 				Quantity:   1,
-				UnitPrice:  6340,
-				TotalPrice: 6340,
-				Tax: domain.Tax{
-					TaxRate:  "20",
-					TaxValue: 1268,
-				},
+				UnitPrice:  634000,
+				TotalPrice: 634000,
+				TaxRate:    "20",
+				TaxValue:   126800,
 			},
-		},
-		TotalPrice: 13315.00,
-		TotalTax: []domain.Tax{
-			{TaxRate: "5/105", TaxValue: 317.25},
-			{TaxRate: "20", TaxValue: 1348.00},
 		},
 	}
 
@@ -82,7 +75,7 @@ func TestRenderer(t *testing.T) {
 
 ПРИХОД
 
-тапки синие размер 42
+тапочки синие размер 42
 1 x 230.00
 =230.00
 без НДС
@@ -107,8 +100,8 @@ func TestRenderer(t *testing.T) {
 
 --
 ИТОГ =13315.00
-в т.ч. НДС 5/105 =317.25
 в т.ч. НДС 20 =1348.00
+в т.ч. НДС 5/105 =317.25
 Безналичными =13315.00
 
 Электронный адрес покупателя
@@ -120,9 +113,7 @@ happy_customer@mail.ru
 ФПД: 1805600812
 `
 
-	templateEngine, err := service.NewTextTemplateEngine()
-	require.NoError(t, err)
-
-	actual := templateEngine.TemplateToString(receipt)
+	templateEngine := service.NewReceiptTemplateEngine()
+	actual := templateEngine.ToText(&receipt)
 	assert.Equal(t, expected, actual)
 }
