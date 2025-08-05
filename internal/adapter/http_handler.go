@@ -11,7 +11,10 @@ import (
 )
 
 type HandlerRegistrar interface {
-	HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request))
+	HandleFunc(
+		pattern string,
+		handler func(http.ResponseWriter, *http.Request),
+	)
 }
 
 type MailReceiptHandler struct {

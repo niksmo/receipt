@@ -9,3 +9,7 @@ import (
 type EventSaver interface {
 	SaveEvent(context.Context, domain.Receipt) error
 }
+
+type EventProducer interface {
+	ProduceEvent(context.Context, domain.Receipt) error
+}
