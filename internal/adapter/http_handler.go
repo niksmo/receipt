@@ -10,20 +10,13 @@ import (
 	"github.com/niksmo/receipt/pkg/logger"
 )
 
-type HandlerRegistrar interface {
-	HandleFunc(
-		pattern string,
-		handler func(http.ResponseWriter, *http.Request),
-	)
-}
-
 type MailReceiptHandler struct {
 	log     logger.Logger
 	service port.EventSaver
 }
 
 func RegisterMailReceiptHandler(
-	log logger.Logger, mux HandlerRegistrar, service port.EventSaver,
+	log logger.Logger, mux *http.ServeMux, service port.EventSaver,
 ) {
 	h := MailReceiptHandler{log, service}
 	mux.HandleFunc("POST /v1/receipt", h.SendReceiptToMail)

@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -30,11 +31,11 @@ type KafkaProducer struct {
 	topic string
 }
 
-func NewMessageProducer(
-	ctx context.Context, log logger.Logger, seedBrokers []string, topic string,
+func NewKafkaProducer(
+	ctx context.Context, log logger.Logger, brokers []string, topic string,
 ) (*KafkaProducer, error) {
 	kcl, err := kgo.NewClient(
-		kgo.SeedBrokers(seedBrokers...),
+		kgo.SeedBrokers(brokers...),
 		kgo.DefaultProduceTopic(topic),
 		kgo.RequiredAcks(kgo.AllISRAcks()),
 		kgo.RecordRetries(produceRetries),
@@ -55,8 +56,39 @@ func NewMessageProducer(
 func (p *KafkaProducer) ProduceEvent(
 	ctx context.Context, rct domain.Receipt,
 ) error {
+	const op = "KafkaProducer.ProduceEvent"
 
+	kr, err := p.createRecord(rct)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	p.kcl.Produce(ctx, &kr, p.promise(rct))
 	return nil
+}
+
+func (p *KafkaProducer) createRecord(rct domain.Receipt) (kgo.Record, error) {
+	const op = "KafkaProducer.createRecord"
+
+	v, err := json.Marshal(rct)
+	if err != nil {
+		return kgo.Record{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return kgo.Record{Value: v}, nil
+}
+
+func (p *KafkaProducer) promise(rct domain.Receipt) func(*kgo.Record, error) {
+	const op = "KafkaProducer.promise"
+	log := p.log.WithOp(op)
+
+	return func(r *kgo.Record, err error) {
+		if err != nil {
+			log.Error().Err(
+				err).Str("receiptUUID", rct.UUID).Msg(
+				"failed to produce record")
+		}
+	}
 }
 
 func (p *KafkaProducer) Close() {
