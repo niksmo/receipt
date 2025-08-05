@@ -68,7 +68,10 @@ func (p *KafkaProducer) ProduceEvent(
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	p.kcl.Produce(ctx, &kr, p.promise(rct))
+	err = p.kcl.ProduceSync(ctx, &kr).FirstErr()
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
 	return nil
 }
 
@@ -81,19 +84,6 @@ func (p *KafkaProducer) createRecord(rct domain.Receipt) (kgo.Record, error) {
 	}
 
 	return kgo.Record{Value: v}, nil
-}
-
-func (p *KafkaProducer) promise(rct domain.Receipt) func(*kgo.Record, error) {
-	const op = "KafkaProducer.promise"
-	log := p.log.WithOp(op)
-
-	return func(r *kgo.Record, err error) {
-		if err != nil {
-			log.Error().Err(
-				err).Str("receiptUUID", rct.UUID).Msg(
-				"failed to produce record")
-		}
-	}
 }
 
 func (p *KafkaProducer) Close() {

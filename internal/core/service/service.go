@@ -3,11 +3,14 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/niksmo/receipt/internal/core/domain"
 	"github.com/niksmo/receipt/internal/core/port"
 	"github.com/niksmo/receipt/pkg/logger"
 )
+
+const produceTimeout = 3 * time.Second
 
 var _ port.EventSaver = (*Service)(nil)
 

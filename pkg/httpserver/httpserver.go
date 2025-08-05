@@ -10,6 +10,14 @@ import (
 	"github.com/niksmo/receipt/pkg/logger"
 )
 
+const (
+	readHeaderTimeout = 500 * time.Millisecond
+	readTimeout       = 2 * time.Second
+	idleTimeout       = 1 * time.Second
+	handlerTimeout    = 5 * time.Second
+	handlerTimeoutMsg = "service unavailable"
+)
+
 type wrapper struct {
 	Status int
 	http.ResponseWriter
@@ -35,7 +43,9 @@ func New(log logger.Logger, addr string) *httpServer {
 	}
 	mux := http.NewServeMux()
 	server := &httpServer{log, srv, mux}
-	srv.Handler = server.logResponse(mux)
+	srv.Handler = http.TimeoutHandler(
+		server.logResponse(mux), handlerTimeout, handlerTimeoutMsg,
+	)
 	return server
 }
 
