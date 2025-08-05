@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/niksmo/receipt/internal/core/domain"
 	"github.com/niksmo/receipt/internal/core/port"
@@ -17,26 +18,30 @@ import (
 var _ port.EventProducer = (*KafkaProducer)(nil)
 
 const (
-	produceRetries    = 3
-	maxBatchSize      = 200 * 1024
-	partitions        = 3
-	replicationFactor = 3
+	produceRetries = 3
+	maxBatchSize   = 200 * 1024
 )
 
-var minInsyncReplicas = "2"
+type KafkaProducerOpts struct {
+	SeedBrokers       []string
+	Topic             string
+	Partitions        int
+	ReplicationFactor int
+	MinInsyncReplicas int
+}
 
 type KafkaProducer struct {
-	log   logger.Logger
-	kcl   *kgo.Client
-	topic string
+	log  logger.Logger
+	kcl  *kgo.Client
+	opts KafkaProducerOpts
 }
 
 func NewKafkaProducer(
-	ctx context.Context, log logger.Logger, brokers []string, topic string,
+	ctx context.Context, log logger.Logger, opts KafkaProducerOpts,
 ) (*KafkaProducer, error) {
 	kcl, err := kgo.NewClient(
-		kgo.SeedBrokers(brokers...),
-		kgo.DefaultProduceTopic(topic),
+		kgo.SeedBrokers(opts.SeedBrokers...),
+		kgo.DefaultProduceTopic(opts.Topic),
 		kgo.RequiredAcks(kgo.AllISRAcks()),
 		kgo.RecordRetries(produceRetries),
 		kgo.ProducerBatchMaxBytes(maxBatchSize),
@@ -45,7 +50,7 @@ func NewKafkaProducer(
 		return nil, err
 	}
 
-	p := KafkaProducer{log, kcl, topic}
+	p := KafkaProducer{log, kcl, opts}
 	if err := p.initTopic(ctx); err != nil {
 		return nil, err
 	}
@@ -104,21 +109,23 @@ func (p *KafkaProducer) initTopic(ctx context.Context) error {
 	const op = "KafkaProducer.initTopic"
 	log := p.log.WithOp(op)
 
+	minInsyncReplicas := strconv.Itoa(p.opts.MinInsyncReplicas)
+
 	_, err := kadm.NewClient(p.kcl).CreateTopic(
 		ctx,
-		partitions,
-		replicationFactor,
+		int32(p.opts.Partitions),
+		int16(p.opts.ReplicationFactor),
 		map[string]*string{"min.insync.replicas": &minInsyncReplicas},
-		p.topic,
+		p.opts.Topic,
 	)
 	if err != nil {
 		if errors.Is(err, kerr.TopicAlreadyExists) {
-			log.Info().Str("topic", p.topic).Msg("topic already exists")
+			log.Info().Str("topic", p.opts.Topic).Msg("topic already exists")
 			return nil
 		}
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	log.Info().Str("topic", p.topic).Msg("topic created")
+	log.Info().Str("topic", p.opts.Topic).Msg("topic created")
 	return nil
 }

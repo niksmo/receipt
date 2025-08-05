@@ -1,12 +1,258 @@
 package config
 
-// log level
+import (
+	"errors"
+	"fmt"
+	"net"
+	"os"
+	"strconv"
+	"strings"
+)
 
-// server config
-//   address
+const (
+	defaultLogLevel       = "info"
+	defaultHTTPServerAddr = "localhost:8080"
 
-// producer config
-//   brokers
-//   topic
+	defaultTopic         = "mail-receipt"
+	minPartitions        = 1
+	minReplicationFactor = -1
+	minMinInsyncReplicas = 1
+)
 
-// consumer config
+var (
+	defaultSeedBrokers = []string{
+		"localhost:19094", "localhost:29094", "localhost:39094",
+	}
+)
+
+var (
+	ErrEnvNotSet = errors.New("the env variable is not specified")
+)
+
+type BrokerConfig struct {
+	SeedBrokers       []string
+	Topic             string
+	Partitions        int
+	ReplicationFactor int
+	MinInsyncReplicas int
+}
+
+type Config struct {
+	LogLevel       string
+	HTTPServerAddr string
+	BrokerConfig
+}
+
+func LoadConfig() Config {
+	var errs []error
+
+	httpSrvAddr, err := loadHTTPServerAddr()
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	brokerCfg, err := loadBrokerConfig()
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	if errsOnLoad(errs) {
+		panic(errors.Join(errs...))
+	}
+
+	cfg := Config{
+		LogLevel:       loadLogLevel(),
+		HTTPServerAddr: httpSrvAddr,
+		BrokerConfig:   brokerCfg,
+	}
+	return cfg
+}
+
+func loadLogLevel() string {
+	logLevel, err := envString("RECEIPT_LOG_LEVEL", nil)
+	if errors.Is(err, ErrEnvNotSet) {
+		return defaultLogLevel
+	}
+	return logLevel
+}
+
+func loadHTTPServerAddr() (string, error) {
+	httpSrvAddr, err := envString(
+		"RECEIPT_HTTP_ADDR",
+		func(v string) error {
+			_, err := net.ResolveTCPAddr("tcp", v)
+			return err
+		},
+	)
+
+	if err != nil {
+		if errors.Is(err, ErrEnvNotSet) {
+			return defaultHTTPServerAddr, nil
+		}
+		return "", err
+	}
+	return httpSrvAddr, nil
+}
+
+func loadBrokerConfig() (BrokerConfig, error) {
+	var errs []error
+
+	seedBrokers, err := loadSeedBrokers()
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	if errsOnLoad(errs) {
+		return BrokerConfig{}, errors.Join(errs...)
+	}
+
+	brokerCfg := BrokerConfig{
+		SeedBrokers:       seedBrokers,
+		Topic:             loadTopic(),
+		Partitions:        loadPartitions(),
+		ReplicationFactor: loadReplicationFactor(),
+		MinInsyncReplicas: loadMinInsyncReplicas(),
+	}
+
+	return brokerCfg, nil
+}
+
+func loadSeedBrokers() ([]string, error) {
+	v, err := envStringS(
+		"RECEIPT_SEED_BROKERS",
+		func(v []string) error {
+			for _, brokerAddr := range v {
+				_, err := net.ResolveTCPAddr("tcp", brokerAddr)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	)
+
+	if err != nil {
+		if errors.Is(err, ErrEnvNotSet) {
+			return defaultSeedBrokers, nil
+		}
+		return nil, err
+	}
+
+	return v, nil
+}
+
+func loadTopic() string {
+	v, err := envString("RECEIPT_TOPIC", nil)
+	if errors.Is(err, ErrEnvNotSet) {
+		return defaultTopic
+	}
+	return v
+}
+
+func loadPartitions() int {
+	v, err := envInt(
+		"RECEIPT_PARTITIONS",
+		func(v int) error {
+			if v < minPartitions {
+				return errors.New("invalid number of partitions")
+			}
+			return nil
+		},
+	)
+
+	if err != nil {
+		return minPartitions
+	}
+
+	return v
+}
+
+func loadReplicationFactor() int {
+	v, err := envInt(
+		"RECEIPT_REPLICATION_FACTOR",
+		func(v int) error {
+			if v < minReplicationFactor {
+				return errors.New("invalid replication factor")
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return minReplicationFactor
+	}
+
+	return v
+}
+
+func loadMinInsyncReplicas() int {
+	v, err := envInt(
+		"RECEIPT_MIN_INSYNC_REPLICAS",
+		func(v int) error {
+			if v < minMinInsyncReplicas {
+				return errors.New("invalid minInsyncReplicas")
+			}
+			return nil
+		},
+	)
+
+	if err != nil {
+		return minMinInsyncReplicas
+	}
+
+	return v
+}
+
+func errsOnLoad(errs []error) bool {
+	return len(errs) != 0
+}
+
+func envString(name string, validationFunc func(v string) error) (string, error) {
+	v, set := os.LookupEnv(name)
+	if !set {
+		return "", ErrEnvNotSet
+	}
+	if validationFunc != nil {
+		if err := validationFunc(v); err != nil {
+			return "", err
+		}
+	}
+
+	return v, nil
+}
+
+func envInt(name string, validationFunc func(v int) error) (int, error) {
+	vStr, set := os.LookupEnv(name)
+	if !set {
+		return 0, ErrEnvNotSet
+	}
+
+	v, err := strconv.Atoi(vStr)
+	if err != nil {
+		return 0, fmt.Errorf("env %s invalid 'int' value: %w", name, err)
+	}
+
+	if validationFunc != nil {
+		if err := validationFunc(v); err != nil {
+			return 0, err
+		}
+	}
+
+	return v, nil
+}
+
+func envStringS(name string, validationFunc func(v []string) error) ([]string, error) {
+	v, set := os.LookupEnv(name)
+	if !set {
+		return nil, ErrEnvNotSet
+	}
+
+	s := strings.Split(v, ",")
+
+	if validationFunc != nil {
+		if err := validationFunc(s); err != nil {
+			return nil, err
+		}
+	}
+
+	return s, nil
+}
