@@ -21,17 +21,7 @@ func main() {
 	)
 	defer cancel()
 
-	kafkaProducerOpts := adapter.KafkaProducerOpts{
-		SeedBrokers:       cfg.BrokerConfig.SeedBrokers,
-		Topic:             cfg.BrokerConfig.Topic,
-		Partitions:        cfg.BrokerConfig.Partitions,
-		ReplicationFactor: cfg.BrokerConfig.ReplicationFactor,
-		MinInsyncReplicas: cfg.BrokerConfig.MinInsyncReplicas,
-	}
-	kafkaProducer, err := adapter.NewKafkaProducer(ctx, log, kafkaProducerOpts)
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create kafka producer")
-	}
+	kafkaProducer := createKafkaProducer(ctx, log, cfg.BrokerConfig)
 
 	httpServer := httpserver.New(log, cfg.HTTPServerAddr)
 	defer httpServer.Close()
@@ -44,4 +34,21 @@ func main() {
 	case <-ctx.Done():
 	case <-httpServerStopped:
 	}
+}
+
+func createKafkaProducer(
+	ctx context.Context, log logger.Logger, brokerCfg config.BrokerConfig,
+) *adapter.KafkaProducer {
+	kafkaProducerOpts := adapter.KafkaProducerOpts{
+		SeedBrokers:       brokerCfg.SeedBrokers,
+		Topic:             brokerCfg.Topic,
+		Partitions:        brokerCfg.Partitions,
+		ReplicationFactor: brokerCfg.ReplicationFactor,
+		MinInsyncReplicas: brokerCfg.MinInsyncReplicas,
+	}
+	kafkaProducer, err := adapter.NewKafkaProducer(ctx, log, kafkaProducerOpts)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to create kafka producer")
+	}
+	return kafkaProducer
 }

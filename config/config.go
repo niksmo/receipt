@@ -27,7 +27,7 @@ var (
 
 var errEnvNotSet = errors.New("the env variable is not specified")
 
-type brokerConfig struct {
+type BrokerConfig struct {
 	SeedBrokers       []string
 	Topic             string
 	Partitions        int
@@ -38,7 +38,7 @@ type brokerConfig struct {
 type config struct {
 	LogLevel       string
 	HTTPServerAddr string
-	BrokerConfig   brokerConfig
+	BrokerConfig
 }
 
 func LoadConfig() config {
@@ -92,7 +92,7 @@ func loadHTTPServerAddr() (string, error) {
 	return httpSrvAddr, nil
 }
 
-func loadBrokerConfig() (brokerConfig, error) {
+func loadBrokerConfig() (BrokerConfig, error) {
 	var errs []error
 
 	seedBrokers, err := loadSeedBrokers()
@@ -101,10 +101,10 @@ func loadBrokerConfig() (brokerConfig, error) {
 	}
 
 	if errsOnLoad(errs) {
-		return brokerConfig{}, errors.Join(errs...)
+		return BrokerConfig{}, errors.Join(errs...)
 	}
 
-	brokerCfg := brokerConfig{
+	brokerCfg := BrokerConfig{
 		SeedBrokers:       seedBrokers,
 		Topic:             loadTopic(),
 		Partitions:        loadPartitions(),
