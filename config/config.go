@@ -25,11 +25,9 @@ var (
 	}
 )
 
-var (
-	ErrEnvNotSet = errors.New("the env variable is not specified")
-)
+var errEnvNotSet = errors.New("the env variable is not specified")
 
-type BrokerConfig struct {
+type brokerConfig struct {
 	SeedBrokers       []string
 	Topic             string
 	Partitions        int
@@ -37,13 +35,13 @@ type BrokerConfig struct {
 	MinInsyncReplicas int
 }
 
-type Config struct {
+type config struct {
 	LogLevel       string
 	HTTPServerAddr string
-	BrokerConfig
+	BrokerConfig   brokerConfig
 }
 
-func LoadConfig() Config {
+func LoadConfig() config {
 	var errs []error
 
 	httpSrvAddr, err := loadHTTPServerAddr()
@@ -60,7 +58,7 @@ func LoadConfig() Config {
 		panic(errors.Join(errs...))
 	}
 
-	cfg := Config{
+	cfg := config{
 		LogLevel:       loadLogLevel(),
 		HTTPServerAddr: httpSrvAddr,
 		BrokerConfig:   brokerCfg,
@@ -70,7 +68,7 @@ func LoadConfig() Config {
 
 func loadLogLevel() string {
 	logLevel, err := envString("RECEIPT_LOG_LEVEL", nil)
-	if errors.Is(err, ErrEnvNotSet) {
+	if errors.Is(err, errEnvNotSet) {
 		return defaultLogLevel
 	}
 	return logLevel
@@ -86,7 +84,7 @@ func loadHTTPServerAddr() (string, error) {
 	)
 
 	if err != nil {
-		if errors.Is(err, ErrEnvNotSet) {
+		if errors.Is(err, errEnvNotSet) {
 			return defaultHTTPServerAddr, nil
 		}
 		return "", err
@@ -94,7 +92,7 @@ func loadHTTPServerAddr() (string, error) {
 	return httpSrvAddr, nil
 }
 
-func loadBrokerConfig() (BrokerConfig, error) {
+func loadBrokerConfig() (brokerConfig, error) {
 	var errs []error
 
 	seedBrokers, err := loadSeedBrokers()
@@ -103,10 +101,10 @@ func loadBrokerConfig() (BrokerConfig, error) {
 	}
 
 	if errsOnLoad(errs) {
-		return BrokerConfig{}, errors.Join(errs...)
+		return brokerConfig{}, errors.Join(errs...)
 	}
 
-	brokerCfg := BrokerConfig{
+	brokerCfg := brokerConfig{
 		SeedBrokers:       seedBrokers,
 		Topic:             loadTopic(),
 		Partitions:        loadPartitions(),
@@ -132,7 +130,7 @@ func loadSeedBrokers() ([]string, error) {
 	)
 
 	if err != nil {
-		if errors.Is(err, ErrEnvNotSet) {
+		if errors.Is(err, errEnvNotSet) {
 			return defaultSeedBrokers, nil
 		}
 		return nil, err
@@ -143,7 +141,7 @@ func loadSeedBrokers() ([]string, error) {
 
 func loadTopic() string {
 	v, err := envString("RECEIPT_TOPIC", nil)
-	if errors.Is(err, ErrEnvNotSet) {
+	if errors.Is(err, errEnvNotSet) {
 		return defaultTopic
 	}
 	return v
@@ -209,7 +207,7 @@ func errsOnLoad(errs []error) bool {
 func envString(name string, validationFunc func(v string) error) (string, error) {
 	v, set := os.LookupEnv(name)
 	if !set {
-		return "", ErrEnvNotSet
+		return "", errEnvNotSet
 	}
 	if validationFunc != nil {
 		if err := validationFunc(v); err != nil {
@@ -223,7 +221,7 @@ func envString(name string, validationFunc func(v string) error) (string, error)
 func envInt(name string, validationFunc func(v int) error) (int, error) {
 	vStr, set := os.LookupEnv(name)
 	if !set {
-		return 0, ErrEnvNotSet
+		return 0, errEnvNotSet
 	}
 
 	v, err := strconv.Atoi(vStr)
@@ -243,7 +241,7 @@ func envInt(name string, validationFunc func(v int) error) (int, error) {
 func envStringS(name string, validationFunc func(v []string) error) ([]string, error) {
 	v, set := os.LookupEnv(name)
 	if !set {
-		return nil, ErrEnvNotSet
+		return nil, errEnvNotSet
 	}
 
 	s := strings.Split(v, ",")
