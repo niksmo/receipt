@@ -47,7 +47,7 @@ func NewKafkaProducer(
 		kgo.ProducerBatchMaxBytes(maxBatchSize),
 	)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
 	p := KafkaProducer{log, kcl, opts}
@@ -75,17 +75,6 @@ func (p *KafkaProducer) ProduceEvent(
 	return nil
 }
 
-func (p *KafkaProducer) createRecord(rct domain.Receipt) (kgo.Record, error) {
-	const op = "KafkaProducer.createRecord"
-
-	v, err := json.Marshal(rct)
-	if err != nil {
-		return kgo.Record{}, fmt.Errorf("%s: %w", op, err)
-	}
-
-	return kgo.Record{Value: v}, nil
-}
-
 func (p *KafkaProducer) Close() {
 	const op = "KafkaProducer.Close"
 	log := p.log.WithOp(op)
@@ -101,6 +90,7 @@ func (p *KafkaProducer) initTopic(ctx context.Context) error {
 
 	minInsyncReplicas := strconv.Itoa(p.opts.MinInsyncReplicas)
 
+	log.Info().Str("topic", p.opts.Topic).Msg("topic initialization")
 	_, err := kadm.NewClient(p.kcl).CreateTopic(
 		ctx,
 		int32(p.opts.Partitions),
@@ -118,4 +108,15 @@ func (p *KafkaProducer) initTopic(ctx context.Context) error {
 
 	log.Info().Str("topic", p.opts.Topic).Msg("topic created")
 	return nil
+}
+
+func (p *KafkaProducer) createRecord(rct domain.Receipt) (kgo.Record, error) {
+	const op = "KafkaProducer.createRecord"
+
+	v, err := json.Marshal(rct)
+	if err != nil {
+		return kgo.Record{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return kgo.Record{Value: v}, nil
 }

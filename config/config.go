@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strconv"
@@ -35,13 +36,13 @@ type BrokerConfig struct {
 	MinInsyncReplicas int
 }
 
-type config struct {
+type Config struct {
 	LogLevel       string
 	HTTPServerAddr string
 	BrokerConfig
 }
 
-func LoadConfig() config {
+func LoadConfig() Config {
 	var errs []error
 
 	httpSrvAddr, err := loadHTTPServerAddr()
@@ -58,12 +59,34 @@ func LoadConfig() config {
 		panic(errors.Join(errs...))
 	}
 
-	cfg := config{
+	cfg := Config{
 		LogLevel:       loadLogLevel(),
 		HTTPServerAddr: httpSrvAddr,
 		BrokerConfig:   brokerCfg,
 	}
 	return cfg
+}
+
+func (c Config) Print(w io.Writer) {
+	fmt.Fprintf(w,
+		`Configuration:
+LogLevel:          %q
+HTTPServerAddress: %q
+SeedBrokers:       %q
+Topic:             %q
+Partitions:        % d
+ReplicationFactor: % d
+MinInsyncReplicas: % d
+
+`,
+		c.LogLevel,
+		c.HTTPServerAddr,
+		c.BrokerConfig.SeedBrokers,
+		c.BrokerConfig.Topic,
+		c.BrokerConfig.Partitions,
+		c.BrokerConfig.ReplicationFactor,
+		c.BrokerConfig.MinInsyncReplicas,
+	)
 }
 
 func loadLogLevel() string {

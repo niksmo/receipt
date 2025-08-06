@@ -13,3 +13,7 @@ type EventSaver interface {
 type EventProducer interface {
 	ProduceEvent(context.Context, domain.Receipt) error
 }
+
+type EventProcessor interface {
+	ProcessEvent(context.Context, domain.Receipt) error
+}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"os"
 	"os/signal"
 	"syscall"
 
@@ -14,6 +15,8 @@ import (
 
 func main() {
 	cfg := config.LoadConfig()
+	cfg.Print(os.Stdout)
+
 	log := logger.New(cfg.LogLevel)
 
 	ctx, cancel := signal.NotifyContext(
@@ -22,6 +25,7 @@ func main() {
 	defer cancel()
 
 	kafkaProducer := createKafkaProducer(ctx, log, cfg.BrokerConfig)
+	defer kafkaProducer.Close()
 
 	httpServer := httpserver.New(log, cfg.HTTPServerAddr)
 	defer httpServer.Close()
