@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/niksmo/receipt/internal/core/domain"
 	"github.com/niksmo/receipt/internal/core/port"
 	"github.com/niksmo/receipt/pkg/logger"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
+
+var count = 0
 
 type KafkaConsumer struct {
 	log    logger.Logger
@@ -31,7 +32,8 @@ func NewKafkaConsumer(
 		kgo.SeedBrokers(seedBrokers...),
 		kgo.DisableAutoCommit(),
 		kgo.ConsumeTopics(topic),
-		kgo.ConsumerGroup(topic),
+		kgo.FetchMinBytes(50*1024),
+		kgo.ConsumerGroup("mail-group"),
 	)
 	if err != nil {
 		panic(err)
@@ -42,17 +44,11 @@ func NewKafkaConsumer(
 func (c *KafkaConsumer) Run(ctx context.Context) {
 	const op = "KafkaConsumer.Run"
 	log := c.log.WithOp(op)
-
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
 	log.Info().Msg("kafka consumer is running")
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
-			c.logCapacity()
 		default:
 			fetches, err := c.pollFetches(ctx)
 			if err != nil {
@@ -83,9 +79,9 @@ func (c *KafkaConsumer) logCapacity() {
 	const op = "KafkaConsumer.logCapacity"
 	log := c.log.WithOp(op)
 
-	log.Debug().Msgf(
-		"consume %.2f MiB/s, %.2f records/s",
-		float64(c.nBytes)/1024*1024, float64(c.nRecs)/1000,
+	log.Info().Msgf(
+		"consume %.2f KiB/s, %d records/s",
+		float64(c.nBytes)/1024, c.nRecs,
 	)
 	c.nRecs = 0
 	c.nBytes = 0

@@ -18,11 +18,11 @@ type MailReceiptHandler struct {
 func RegisterMailReceiptHandler(
 	log logger.Logger, mux *http.ServeMux, service port.EventSaver,
 ) {
-	h := MailReceiptHandler{log, service}
+	h := &MailReceiptHandler{log, service}
 	mux.HandleFunc("POST /v1/receipt", h.SendReceiptToMail)
 }
 
-func (h MailReceiptHandler) SendReceiptToMail(
+func (h *MailReceiptHandler) SendReceiptToMail(
 	w http.ResponseWriter, r *http.Request,
 ) {
 	const op = "MailReceiptHandler.SendReceiptToMail"

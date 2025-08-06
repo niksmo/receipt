@@ -44,6 +44,7 @@ func New(log logger.Logger, addr string) *httpServer {
 	}
 	mux := http.NewServeMux()
 	server := &httpServer{log, srv, mux}
+	server.srv.Handler = mux
 	srv.Handler = http.TimeoutHandler(
 		server.logResponse(mux), handlerTimeout, handlerTimeoutMsg,
 	)
