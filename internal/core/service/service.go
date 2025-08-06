@@ -13,6 +13,7 @@ import (
 const produceTimeout = 3 * time.Second
 
 var _ port.EventSaver = (*Service)(nil)
+var _ port.EventProcessor = (*Service)(nil)
 
 type Service struct {
 	log  logger.Logger
@@ -29,5 +30,10 @@ func (s *Service) SaveEvent(ctx context.Context, rct domain.Receipt) error {
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
+	return nil
+}
+
+func (s *Service) ProcessEvent(context.Context, []domain.Receipt) error {
+	const op = "Service.ProcessEvent"
 	return nil
 }
