@@ -28,8 +28,10 @@ func NewKafkaConsumer(
 	ep port.EventProcessor,
 ) *KafkaConsumer {
 	kcl, err := kgo.NewClient(
+		kgo.SeedBrokers(seedBrokers...),
 		kgo.DisableAutoCommit(),
 		kgo.ConsumeTopics(topic),
+		kgo.ConsumerGroup(topic),
 	)
 	if err != nil {
 		panic(err)
@@ -44,6 +46,7 @@ func (c *KafkaConsumer) Run(ctx context.Context) {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
+	log.Info().Msg("kafka consumer is running")
 	for {
 		select {
 		case <-ctx.Done():
@@ -53,7 +56,7 @@ func (c *KafkaConsumer) Run(ctx context.Context) {
 		default:
 			fetches, err := c.pollFetches(ctx)
 			if err != nil {
-				if errors.Is(context.DeadlineExceeded, err) {
+				if errors.Is(err, context.Canceled) {
 					log.Info().Msg("poll fetches interrupted")
 					return
 				}
@@ -93,7 +96,7 @@ func (c *KafkaConsumer) pollFetches(ctx context.Context) (kgo.Fetches, error) {
 
 	fetches := c.kcl.PollFetches(ctx)
 	err := fetches.Err0()
-	if errors.Is(err, context.DeadlineExceeded) {
+	if errors.Is(err, context.Canceled) {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
