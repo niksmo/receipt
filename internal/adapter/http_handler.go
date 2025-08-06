@@ -45,13 +45,6 @@ func (h MailReceiptHandler) SendReceiptToMail(
 	}
 
 	receipt := httpReceiptToDomain(data)
-	if err != nil {
-		errStr := "invalid data"
-		http.Error(w, errStr, http.StatusBadRequest)
-		log.Info().Err(err).Msg(errStr)
-		return
-	}
-
 	err = h.service.SaveEvent(r.Context(), receipt)
 	if err != nil {
 		http.Error(w, "", http.StatusServiceUnavailable)
