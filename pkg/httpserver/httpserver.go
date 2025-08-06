@@ -3,6 +3,7 @@ package httpserver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -53,22 +54,18 @@ func (s *httpServer) Mux() *http.ServeMux {
 	return s.mux
 }
 
-func (s *httpServer) Run() <-chan struct{} {
-	done := make(chan struct{})
-	go s.run(done)
-	return done
-}
-
-func (s *httpServer) run(done chan<- struct{}) {
-	const op = "httpServer.run"
+func (s *httpServer) Run(ctx context.Context, onFall func(err error)) {
+	const op = "httpServer.Run"
 	log := s.log.WithOp(op)
 
 	log.Info().Str("addr", s.srv.Addr).Msg("http server is running")
 	err := s.srv.ListenAndServe()
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Error().Err(err).Msg("failed to listen and serve")
+	if err != nil {
+		if errors.Is(err, http.ErrServerClosed) {
+			return
+		}
+		onFall(fmt.Errorf("%s: %w", op, err))
 	}
-	close(done)
 }
 
 func (s *httpServer) Close() {

@@ -19,25 +19,35 @@ func main() {
 
 	log := logger.New(cfg.LogLevel)
 
-	ctx, cancel := signal.NotifyContext(
-		context.Background(), syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM,
-	)
-	defer cancel()
-
-	kafkaProducer := createKafkaProducer(ctx, log, cfg.BrokerConfig)
-	defer kafkaProducer.Close()
+	sigCtx, stop := notifyContext()
+	defer stop()
 
 	httpServer := httpserver.New(log, cfg.HTTPServerAddr)
 	defer httpServer.Close()
 
-	service := service.NewService(log, kafkaProducer)
-	adapter.RegisterMailReceiptHandler(log, httpServer.Mux(), service)
-	httpServerStopped := httpServer.Run()
+	kafkaProducer := createKafkaProducer(sigCtx, log, cfg.BrokerConfig)
+	defer kafkaProducer.Close()
 
-	select {
-	case <-ctx.Done():
-	case <-httpServerStopped:
-	}
+	service := service.NewService(log, kafkaProducer)
+
+	kafkaConsumer := adapter.NewKafkaConsumer(
+		log, cfg.SeedBrokers, cfg.Topic, service)
+	defer kafkaConsumer.Close()
+
+	adapter.RegisterMailReceiptHandler(log, httpServer.Mux(), service)
+	go httpServer.Run(sigCtx, onHTTPServerFall(log, stop))
+	go kafkaConsumer.Run(sigCtx)
+
+	<-sigCtx.Done()
+}
+
+func notifyContext() (context.Context, context.CancelFunc) {
+	return signal.NotifyContext(
+		context.Background(),
+		syscall.SIGINT,
+		syscall.SIGQUIT,
+		syscall.SIGTERM,
+	)
 }
 
 func createKafkaProducer(
@@ -54,4 +64,11 @@ func createKafkaProducer(
 		log.Fatal().Err(err).Msg("failed to create kafka producer")
 	}
 	return kafkaProducer
+}
+
+func onHTTPServerFall(log logger.Logger, stop context.CancelFunc) func(error) {
+	return func(err error) {
+		log.Error().Err(err).Msg("http server crashed")
+		stop()
+	}
 }
