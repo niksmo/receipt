@@ -33,7 +33,6 @@ func (s *Service) SaveEvent(ctx context.Context, rct domain.Receipt) error {
 	return nil
 }
 
-func (s *Service) ProcessEvent(context.Context, []domain.Receipt) error {
+func (s *Service) ProcessEvent(context.Context, []domain.Receipt) {
 	const op = "Service.ProcessEvent"
-	return nil
 }

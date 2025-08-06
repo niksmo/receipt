@@ -15,5 +15,5 @@ type EventProducer interface {
 }
 
 type EventProcessor interface {
-	ProcessEvent(context.Context, []domain.Receipt) error
+	ProcessEvent(context.Context, []domain.Receipt)
 }
