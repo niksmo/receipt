@@ -48,7 +48,6 @@ func createKafkaProducer(
 		Topic:             brokerCfg.Topic,
 		Partitions:        brokerCfg.Partitions,
 		ReplicationFactor: brokerCfg.ReplicationFactor,
-		MinInsyncReplicas: brokerCfg.MinInsyncReplicas,
 	}
 	kafkaProducer, err := adapter.NewKafkaProducer(ctx, log, kafkaProducerOpts)
 	if err != nil {

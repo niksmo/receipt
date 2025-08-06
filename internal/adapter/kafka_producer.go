@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/niksmo/receipt/internal/core/domain"
 	"github.com/niksmo/receipt/internal/core/port"
@@ -88,14 +87,12 @@ func (p *KafkaProducer) initTopic(ctx context.Context) error {
 	const op = "KafkaProducer.initTopic"
 	log := p.log.WithOp(op)
 
-	minInsyncReplicas := strconv.Itoa(p.opts.MinInsyncReplicas)
-
 	log.Info().Str("topic", p.opts.Topic).Msg("topic initialization")
 	_, err := kadm.NewClient(p.kcl).CreateTopic(
 		ctx,
 		int32(p.opts.Partitions),
 		int16(p.opts.ReplicationFactor),
-		map[string]*string{"min.insync.replicas": &minInsyncReplicas},
+		nil,
 		p.opts.Topic,
 	)
 	if err != nil {

@@ -17,7 +17,6 @@ const (
 	defaultTopic         = "mail-receipt"
 	minPartitions        = 1
 	minReplicationFactor = -1
-	minMinInsyncReplicas = 1
 )
 
 var (
@@ -33,7 +32,6 @@ type BrokerConfig struct {
 	Topic             string
 	Partitions        int
 	ReplicationFactor int
-	MinInsyncReplicas int
 }
 
 type Config struct {
@@ -76,7 +74,6 @@ SeedBrokers:       %q
 Topic:             %q
 Partitions:        % d
 ReplicationFactor: % d
-MinInsyncReplicas: % d
 
 `,
 		c.LogLevel,
@@ -85,7 +82,6 @@ MinInsyncReplicas: % d
 		c.BrokerConfig.Topic,
 		c.BrokerConfig.Partitions,
 		c.BrokerConfig.ReplicationFactor,
-		c.BrokerConfig.MinInsyncReplicas,
 	)
 }
 
@@ -132,7 +128,6 @@ func loadBrokerConfig() (BrokerConfig, error) {
 		Topic:             loadTopic(),
 		Partitions:        loadPartitions(),
 		ReplicationFactor: loadReplicationFactor(),
-		MinInsyncReplicas: loadMinInsyncReplicas(),
 	}
 
 	return brokerCfg, nil
@@ -200,24 +195,6 @@ func loadReplicationFactor() int {
 	)
 	if err != nil {
 		return minReplicationFactor
-	}
-
-	return v
-}
-
-func loadMinInsyncReplicas() int {
-	v, err := envInt(
-		"RECEIPT_MIN_INSYNC_REPLICAS",
-		func(v int) error {
-			if v < minMinInsyncReplicas {
-				return errors.New("invalid minInsyncReplicas")
-			}
-			return nil
-		},
-	)
-
-	if err != nil {
-		return minMinInsyncReplicas
 	}
 
 	return v

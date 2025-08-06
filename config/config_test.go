@@ -16,7 +16,6 @@ func TestLoadConfig(t *testing.T) {
 		assert.Equal(t, defaultTopic, config.BrokerConfig.Topic)
 		assert.Equal(t, minPartitions, config.BrokerConfig.Partitions)
 		assert.Equal(t, minReplicationFactor, config.BrokerConfig.ReplicationFactor)
-		assert.Equal(t, minMinInsyncReplicas, config.BrokerConfig.MinInsyncReplicas)
 	})
 
 	t.Run("should_set_values", func(t *testing.T) {
@@ -26,7 +25,6 @@ func TestLoadConfig(t *testing.T) {
 		t.Setenv("RECEIPT_TOPIC", "myTopic")
 		t.Setenv("RECEIPT_PARTITIONS", "8")
 		t.Setenv("RECEIPT_REPLICATION_FACTOR", "3")
-		t.Setenv("RECEIPT_MIN_INSYNC_REPLICAS", "2")
 
 		config := LoadConfig()
 		assert.Equal(t, "myLevel", config.LogLevel)
@@ -35,7 +33,6 @@ func TestLoadConfig(t *testing.T) {
 		assert.Equal(t, "myTopic", config.BrokerConfig.Topic)
 		assert.Equal(t, 8, config.BrokerConfig.Partitions)
 		assert.Equal(t, 3, config.BrokerConfig.ReplicationFactor)
-		assert.Equal(t, 2, config.BrokerConfig.MinInsyncReplicas)
 	})
 
 	t.Run("should_panic", func(t *testing.T) {
