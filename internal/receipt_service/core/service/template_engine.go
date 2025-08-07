@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/niksmo/receipt/internal/core/domain"
+	"github.com/niksmo/receipt/internal/receipt_service/core/domain"
 )
 
 const DateLayout = "01.02.06 15:04"

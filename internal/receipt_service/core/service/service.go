@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/niksmo/receipt/internal/core/domain"
-	"github.com/niksmo/receipt/internal/core/port"
+	"github.com/niksmo/receipt/internal/receipt_service/core/domain"
+	"github.com/niksmo/receipt/internal/receipt_service/core/port"
 	"github.com/niksmo/receipt/pkg/logger"
 )
 

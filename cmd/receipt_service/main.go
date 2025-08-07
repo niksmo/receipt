@@ -7,8 +7,8 @@ import (
 	"syscall"
 
 	"github.com/niksmo/receipt/config"
-	"github.com/niksmo/receipt/internal/adapter"
-	"github.com/niksmo/receipt/internal/core/service"
+	"github.com/niksmo/receipt/internal/receipt_service/adapter"
+	"github.com/niksmo/receipt/internal/receipt_service/core/service"
 	"github.com/niksmo/receipt/pkg/httpserver"
 	"github.com/niksmo/receipt/pkg/logger"
 )

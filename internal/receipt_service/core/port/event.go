@@ -3,7 +3,7 @@ package port
 import (
 	"context"
 
-	"github.com/niksmo/receipt/internal/core/domain"
+	"github.com/niksmo/receipt/internal/receipt_service/core/domain"
 )
 
 type EventSaver interface {
