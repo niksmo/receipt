@@ -16,6 +16,7 @@ func TestLoadConfig(t *testing.T) {
 		assert.Equal(t, defaultTopic, config.BrokerConfig.Topic)
 		assert.Equal(t, minPartitions, config.BrokerConfig.Partitions)
 		assert.Equal(t, minReplicationFactor, config.BrokerConfig.ReplicationFactor)
+		assert.Equal(t, defaultConsumerGroup, config.BrokerConfig.ConsumerGroup)
 	})
 
 	t.Run("should_set_values", func(t *testing.T) {
@@ -25,6 +26,7 @@ func TestLoadConfig(t *testing.T) {
 		t.Setenv("RECEIPT_TOPIC", "myTopic")
 		t.Setenv("RECEIPT_PARTITIONS", "8")
 		t.Setenv("RECEIPT_REPLICATION_FACTOR", "3")
+		t.Setenv("RECEIPT_CONSUMER_GROUP", "myGroup")
 
 		config := LoadConfig()
 		assert.Equal(t, "myLevel", config.LogLevel)
@@ -33,6 +35,7 @@ func TestLoadConfig(t *testing.T) {
 		assert.Equal(t, "myTopic", config.BrokerConfig.Topic)
 		assert.Equal(t, 8, config.BrokerConfig.Partitions)
 		assert.Equal(t, 3, config.BrokerConfig.ReplicationFactor)
+		assert.Equal(t, "myGroup", config.BrokerConfig.ConsumerGroup)
 	})
 
 	t.Run("should_panic", func(t *testing.T) {

@@ -17,6 +17,8 @@ const (
 	defaultTopic         = "mail-receipt"
 	minPartitions        = 1
 	minReplicationFactor = -1
+
+	defaultConsumerGroup = "mail-group"
 )
 
 var (
@@ -32,6 +34,7 @@ type BrokerConfig struct {
 	Topic             string
 	Partitions        int
 	ReplicationFactor int
+	ConsumerGroup     string
 }
 
 type Config struct {
@@ -74,14 +77,16 @@ SeedBrokers:       %q
 Topic:             %q
 Partitions:        % d
 ReplicationFactor: % d
+ConsumerGroup:     %q
 
 `,
 		c.LogLevel,
 		c.HTTPServerAddr,
-		c.BrokerConfig.SeedBrokers,
-		c.BrokerConfig.Topic,
-		c.BrokerConfig.Partitions,
-		c.BrokerConfig.ReplicationFactor,
+		c.SeedBrokers,
+		c.Topic,
+		c.Partitions,
+		c.ReplicationFactor,
+		c.ConsumerGroup,
 	)
 }
 
@@ -128,6 +133,7 @@ func loadBrokerConfig() (BrokerConfig, error) {
 		Topic:             loadTopic(),
 		Partitions:        loadPartitions(),
 		ReplicationFactor: loadReplicationFactor(),
+		ConsumerGroup:     loadConsumerGroup(),
 	}
 
 	return brokerCfg, nil
@@ -197,6 +203,14 @@ func loadReplicationFactor() int {
 		return minReplicationFactor
 	}
 
+	return v
+}
+
+func loadConsumerGroup() string {
+	v, err := envString("RECEIPT_CONSUMER_GROUP", nil)
+	if errors.Is(err, errEnvNotSet) {
+		return defaultConsumerGroup
+	}
 	return v
 }
 

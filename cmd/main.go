@@ -23,22 +23,22 @@ func main() {
 	defer stop()
 
 	httpServer := httpserver.New(log, cfg.HTTPServerAddr)
-	defer httpServer.Close()
 
 	kafkaProducer := createKafkaProducer(sigCtx, log, cfg.BrokerConfig)
-	defer kafkaProducer.Close()
 
 	service := service.NewService(log, kafkaProducer)
 
 	kafkaConsumer := adapter.NewKafkaConsumer(
-		log, cfg.SeedBrokers, cfg.Topic, service)
-	defer kafkaConsumer.Close()
+		log, cfg.SeedBrokers, cfg.Topic, cfg.ConsumerGroup, service)
 
 	adapter.RegisterMailReceiptHandler(log, httpServer.Mux(), service)
 	go httpServer.Run(sigCtx, onHTTPServerFall(log, stop))
 	go kafkaConsumer.Run(sigCtx)
 
 	<-sigCtx.Done()
+	httpServer.Close()
+	kafkaProducer.Close()
+	kafkaConsumer.Close()
 }
 
 func notifyContext() (context.Context, context.CancelFunc) {

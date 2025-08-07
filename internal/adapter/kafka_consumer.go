@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync/atomic"
+	"time"
 
 	"github.com/niksmo/receipt/internal/core/domain"
 	"github.com/niksmo/receipt/internal/core/port"
@@ -12,28 +14,30 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-var count = 0
+const (
+	fetchMinBytes = 20 * 1024
+	fetchMaxWait  = 2 * time.Second
+)
 
 type KafkaConsumer struct {
 	log    logger.Logger
 	kcl    *kgo.Client
 	ep     port.EventProcessor
-	nRecs  int
-	nBytes int
+	nRecs  atomic.Int64
+	nBytes atomic.Int64
 }
 
 func NewKafkaConsumer(
 	log logger.Logger,
-	seedBrokers []string,
-	topic string,
-	ep port.EventProcessor,
+	seedBrokers []string, topic string, group string, ep port.EventProcessor,
 ) *KafkaConsumer {
 	kcl, err := kgo.NewClient(
 		kgo.SeedBrokers(seedBrokers...),
 		kgo.DisableAutoCommit(),
 		kgo.ConsumeTopics(topic),
-		kgo.FetchMinBytes(50*1024),
-		kgo.ConsumerGroup("mail-group"),
+		kgo.FetchMinBytes(fetchMinBytes),
+		kgo.FetchMaxWait(fetchMaxWait),
+		kgo.ConsumerGroup(group),
 	)
 	if err != nil {
 		panic(err)
@@ -44,24 +48,17 @@ func NewKafkaConsumer(
 func (c *KafkaConsumer) Run(ctx context.Context) {
 	const op = "KafkaConsumer.Run"
 	log := c.log.WithOp(op)
+
 	log.Info().Msg("kafka consumer is running")
+
+	go c.capacity(ctx)
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			fetches, err := c.pollFetches(ctx)
-			if err != nil {
-				if errors.Is(err, context.Canceled) {
-					log.Info().Msg("poll fetches interrupted")
-					return
-				}
-				log.Error().Err(err).Msg("failed to poll fetches")
-				continue
-			}
-
-			rcts := c.getReceipts(fetches)
-			c.handleReceipts(ctx, rcts)
+			c.consume(ctx)
 		}
 	}
 }
@@ -75,22 +72,54 @@ func (c *KafkaConsumer) Close() {
 	log.Info().Msg("consumer is closed")
 }
 
-func (c *KafkaConsumer) logCapacity() {
-	const op = "KafkaConsumer.logCapacity"
+func (c *KafkaConsumer) consume(ctx context.Context) {
+	const op = "KafkaConsumer.consume"
 	log := c.log.WithOp(op)
 
-	log.Info().Msgf(
-		"consume %.2f KiB/s, %d records/s",
-		float64(c.nBytes)/1024, c.nRecs,
-	)
-	c.nRecs = 0
-	c.nBytes = 0
+	fetches, err := c.pollFetches(ctx)
+	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			log.Info().Msg("interrupted")
+			return
+		}
+		log.Error().Err(err).Msg("failed to poll fetches")
+		return
+	}
+
+	rcts := c.retrieveReceipts(fetches)
+	if !c.isReceipts(rcts) {
+		return
+	}
+	c.handleReceipts(ctx, rcts)
+	c.commitOffset(ctx)
+}
+
+func (c *KafkaConsumer) capacity(ctx context.Context) {
+	const op = "KafkaConsumer.capacity"
+	log := c.log.WithOp(op)
+
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			nBytes := fmt.Sprintf("%.2f", float64(c.nBytes.Swap(0)))
+			nRecs := c.nRecs.Swap(0)
+			log.Debug().Str("KiB/s", nBytes).Int64("recs/s", nRecs).Send()
+		}
+	}
 }
 
 func (c *KafkaConsumer) pollFetches(ctx context.Context) (kgo.Fetches, error) {
 	const op = "KafkaConsumer.pollFetches"
+	log := c.log.WithOp(op)
 
+	log.Debug().Msg("start polling")
 	fetches := c.kcl.PollFetches(ctx)
+	log.Debug().Msg("complete polling")
 	err := fetches.Err0()
 	if errors.Is(err, context.Canceled) {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -107,17 +136,22 @@ func (c *KafkaConsumer) pollFetches(ctx context.Context) (kgo.Fetches, error) {
 	if len(errs) != 0 {
 		return nil, fmt.Errorf("%s: %w", op, errors.Join(errs...))
 	}
+
+	recs := int64(fetches.NumRecords())
+	c.nRecs.Add(recs)
+	log.Debug().Int64("nRecord", recs).Send()
 	return fetches, nil
 }
 
-func (c *KafkaConsumer) getReceipts(fetches kgo.Fetches) []domain.Receipt {
-	const op = "KafkaConsumer.getReceipts"
+func (c *KafkaConsumer) retrieveReceipts(
+	fetches kgo.Fetches,
+) []domain.Receipt {
+	const op = "KafkaConsumer.retrieveReceipts"
 	log := c.log.WithOp(op)
 
 	var rcts []domain.Receipt
 	fetches.EachRecord(func(rec *kgo.Record) {
-		c.nRecs++
-		c.nBytes += len(rec.Value)
+		c.nBytes.Add(int64(len(rec.Value)))
 
 		var rct domain.Receipt
 		err := json.Unmarshal(rec.Value, &rct)
@@ -127,24 +161,27 @@ func (c *KafkaConsumer) getReceipts(fetches kgo.Fetches) []domain.Receipt {
 		}
 		rcts = append(rcts, rct)
 	})
+	log.Debug().Int("nReceipts", len(rcts)).Send()
 
 	return rcts
+}
+
+func (c *KafkaConsumer) isReceipts(rcts []domain.Receipt) bool {
+	return len(rcts) != 0
 }
 
 func (c *KafkaConsumer) handleReceipts(
 	ctx context.Context, rcts []domain.Receipt,
 ) {
-	const op = "KafkaConsumer.handleReceipts"
-	log := c.log.WithOp(op)
-
-	if len(rcts) == 0 {
-		log.Info().Msg("no receipts to handle")
-		return
-	}
-
 	c.ep.ProcessEvent(ctx, rcts)
+}
+
+func (c *KafkaConsumer) commitOffset(ctx context.Context) {
+	const op = "KafkaConsumer.commitOffset"
+	log := c.log.WithOp(op)
 
 	if err := c.kcl.CommitUncommittedOffsets(ctx); err != nil {
 		log.Error().Err(err).Msg("failed to commit offsets")
 	}
+	log.Debug().Msg("successfuly committed")
 }

@@ -89,11 +89,11 @@ func (s *httpServer) logResponse(next http.Handler) http.Handler {
 		start := time.Now()
 		wrappee := &wrapper{ResponseWriter: w}
 		next.ServeHTTP(wrappee, r)
-		resDur := time.Since(start)
-		resDurStrMicro := strconv.FormatInt(resDur.Microseconds(), 10) + "μs"
+		procDur := time.Since(start)
+		resDurStrMicro := strconv.FormatInt(procDur.Microseconds(), 10) + "μs"
 
 		s.log.Info().Str(
-			"repliedWithin", resDurStrMicro).Int("status", wrappee.Status).Send()
+			"procDur", resDurStrMicro).Int("status", wrappee.Status).Send()
 	}
 	return http.HandlerFunc(log)
 }

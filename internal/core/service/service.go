@@ -35,5 +35,6 @@ func (s *Service) SaveEvent(ctx context.Context, rct domain.Receipt) error {
 
 func (s *Service) ProcessEvent(ctx context.Context, rcts []domain.Receipt) {
 	const op = "Service.ProcessEvent"
-	fmt.Println(rcts)
+	log := s.log.WithOp(op)
+	log.Debug().Msg("processed")
 }
