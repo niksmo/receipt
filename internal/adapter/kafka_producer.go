@@ -21,40 +21,27 @@ const (
 	maxBatchSize   = 200 * 1024
 )
 
-type KafkaProducerOpts struct {
-	SeedBrokers       []string
-	Topic             string
-	Partitions        int
-	ReplicationFactor int
-	MinInsyncReplicas int
-}
-
 type KafkaProducer struct {
-	log  logger.Logger
-	kcl  *kgo.Client
-	opts KafkaProducerOpts
+	log   logger.Logger
+	kcl   *kgo.Client
+	topic string
 }
 
 func NewKafkaProducer(
-	ctx context.Context, log logger.Logger, opts KafkaProducerOpts,
-) (*KafkaProducer, error) {
+	log logger.Logger, seedBrokers []string, topic string,
+) *KafkaProducer {
 	kcl, err := kgo.NewClient(
-		kgo.SeedBrokers(opts.SeedBrokers...),
-		kgo.DefaultProduceTopic(opts.Topic),
+		kgo.SeedBrokers(seedBrokers...),
+		kgo.DefaultProduceTopic(topic),
 		kgo.RequiredAcks(kgo.AllISRAcks()),
 		kgo.RecordRetries(produceRetries),
 		kgo.ProducerBatchMaxBytes(maxBatchSize),
 	)
 	if err != nil {
-		panic(err)
+		panic(err) // developer mistake
 	}
 
-	p := KafkaProducer{log, kcl, opts}
-	if err := p.initTopic(ctx); err != nil {
-		return nil, err
-	}
-
-	return &p, nil
+	return &KafkaProducer{log, kcl, topic}
 }
 
 func (p *KafkaProducer) ProduceEvent(
@@ -83,28 +70,26 @@ func (p *KafkaProducer) Close() {
 	log.Info().Msg("producer is closed")
 }
 
-func (p *KafkaProducer) initTopic(ctx context.Context) error {
-	const op = "KafkaProducer.initTopic"
+func (p *KafkaProducer) InitTopic(
+	ctx context.Context, partitions int, repFactor int, onFall func(err error),
+) {
+	const op = "KafkaProducer.InitTopic"
 	log := p.log.WithOp(op)
 
-	log.Info().Str("topic", p.opts.Topic).Msg("topic initialization")
+	log.Info().Str("topic", p.topic).Msg("initializing topic...")
 	_, err := kadm.NewClient(p.kcl).CreateTopic(
-		ctx,
-		int32(p.opts.Partitions),
-		int16(p.opts.ReplicationFactor),
-		nil,
-		p.opts.Topic,
+		ctx, int32(partitions), int16(repFactor), nil, p.topic,
 	)
 	if err != nil {
 		if errors.Is(err, kerr.TopicAlreadyExists) {
-			log.Info().Str("topic", p.opts.Topic).Msg("topic already exists")
-			return nil
+			log.Info().Str("topic", p.topic).Msg("topic already exists")
+			return
 		}
-		return fmt.Errorf("%s: %w", op, err)
+		onFall(fmt.Errorf("%s: %w", op, err))
+		return
 	}
 
-	log.Info().Str("topic", p.opts.Topic).Msg("topic created")
-	return nil
+	log.Info().Str("topic", p.topic).Msg("topic created")
 }
 
 func (p *KafkaProducer) createRecord(rct domain.Receipt) (kgo.Record, error) {
@@ -115,5 +100,5 @@ func (p *KafkaProducer) createRecord(rct domain.Receipt) (kgo.Record, error) {
 		return kgo.Record{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return kgo.Record{Value: v}, nil
+	return kgo.Record{Topic: p.topic, Value: v}, nil
 }

@@ -24,7 +24,11 @@ func main() {
 
 	httpServer := httpserver.New(log, cfg.HTTPServerAddr)
 
-	kafkaProducer := createKafkaProducer(sigCtx, log, cfg.BrokerConfig)
+	kafkaProducer := adapter.NewKafkaProducer(
+		log, cfg.SeedBrokers, cfg.Topic)
+
+	kafkaProducer.InitTopic(sigCtx, cfg.Partitions,
+		cfg.ReplicationFactor, onInitTopicFall(log, stop))
 
 	service := service.NewService(log, kafkaProducer)
 
@@ -50,20 +54,11 @@ func notifyContext() (context.Context, context.CancelFunc) {
 	)
 }
 
-func createKafkaProducer(
-	ctx context.Context, log logger.Logger, brokerCfg config.BrokerConfig,
-) *adapter.KafkaProducer {
-	kafkaProducerOpts := adapter.KafkaProducerOpts{
-		SeedBrokers:       brokerCfg.SeedBrokers,
-		Topic:             brokerCfg.Topic,
-		Partitions:        brokerCfg.Partitions,
-		ReplicationFactor: brokerCfg.ReplicationFactor,
+func onInitTopicFall(log logger.Logger, stop context.CancelFunc) func(error) {
+	return func(err error) {
+		log.Error().Err(err).Msg("failed to init broker topic")
+		stop()
 	}
-	kafkaProducer, err := adapter.NewKafkaProducer(ctx, log, kafkaProducerOpts)
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to create kafka producer")
-	}
-	return kafkaProducer
 }
 
 func onHTTPServerFall(log logger.Logger, stop context.CancelFunc) func(error) {

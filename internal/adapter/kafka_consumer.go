@@ -40,7 +40,7 @@ func NewKafkaConsumer(
 		kgo.ConsumerGroup(group),
 	)
 	if err != nil {
-		panic(err)
+		panic(err) // developer mistake
 	}
 	return &KafkaConsumer{log: log, kcl: kcl, ep: ep}
 }
@@ -152,9 +152,7 @@ func (c *KafkaConsumer) retrieveReceipts(
 	var rcts []domain.Receipt
 	fetches.EachRecord(func(rec *kgo.Record) {
 		c.nBytes.Add(int64(len(rec.Value)))
-
-		var rct domain.Receipt
-		err := json.Unmarshal(rec.Value, &rct)
+		rct, err := c.unmarshalReceipt(rec.Value)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to unmarshal record value")
 			return
@@ -164,6 +162,17 @@ func (c *KafkaConsumer) retrieveReceipts(
 	log.Debug().Int("nReceipts", len(rcts)).Send()
 
 	return rcts
+}
+
+func (c *KafkaConsumer) unmarshalReceipt(b []byte) (domain.Receipt, error) {
+	const op = "KafkaConsumer.unmarshalReceipt"
+
+	var rct domain.Receipt
+	err := json.Unmarshal(b, &rct)
+	if err != nil {
+		return domain.Receipt{}, fmt.Errorf("%s: %w", op, err)
+	}
+	return rct, nil
 }
 
 func (c *KafkaConsumer) isReceipts(rcts []domain.Receipt) bool {
