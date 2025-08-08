@@ -7,8 +7,21 @@ volumes:
 
 networks:
   net:
+  notifier:
 
 services:
+
+  mock-notifier:
+    build:
+      context: .
+      dockerfile: ./build/package/dockerfile
+      args:
+        - appname=mock_notifier
+    container_name: mock-notifier
+    ports:
+      - 127.0.0.1:8080:8080
+    networks:
+      - notifier
 
   kafka-1:
     image: bitnami/kafka:4.0.0
