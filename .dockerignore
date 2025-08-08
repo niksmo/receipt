@@ -1,0 +1,7 @@
+.DS_Store
+bruno
+.dockerignore
+.git
+.gitignore
+compose.yaml
+*.md
