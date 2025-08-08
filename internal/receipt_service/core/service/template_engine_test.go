@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/niksmo/receipt/internal/core/domain"
-	"github.com/niksmo/receipt/internal/core/service"
+	"github.com/niksmo/receipt/internal/receipt_service/core/domain"
+	"github.com/niksmo/receipt/internal/receipt_service/core/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

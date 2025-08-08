@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,6 +12,7 @@ import (
 	"github.com/niksmo/receipt/internal/receipt_service/core/service"
 	"github.com/niksmo/receipt/pkg/httpserver"
 	"github.com/niksmo/receipt/pkg/logger"
+	"github.com/niksmo/receipt/pkg/middleware"
 )
 
 func main() {
@@ -21,8 +23,6 @@ func main() {
 
 	sigCtx, stop := notifyContext()
 	defer stop()
-
-	httpServer := httpserver.New(log, cfg.HTTPServerAddr)
 
 	kafkaProducer := adapter.NewKafkaProducer(
 		log, cfg.SeedBrokers, cfg.Topic)
@@ -35,7 +35,11 @@ func main() {
 	kafkaConsumer := adapter.NewKafkaConsumer(
 		log, cfg.SeedBrokers, cfg.Topic, cfg.ConsumerGroup, service)
 
-	adapter.RegisterMailReceiptHandler(log, httpServer.Mux(), service)
+	mux := http.NewServeMux()
+	adapter.RegisterMailReceiptHandler(log, mux, service)
+
+	httpHandler := middleware.LogResposeStatus(log, middleware.AcceptJSON(mux))
+	httpServer := httpserver.New(log, cfg.HTTPServerAddr, httpHandler)
 	go httpServer.Run(sigCtx, onHTTPServerFall(log, stop))
 	go kafkaConsumer.Run(sigCtx)
 

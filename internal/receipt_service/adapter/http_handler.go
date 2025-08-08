@@ -28,13 +28,6 @@ func (h *MailReceiptHandler) SendReceiptToMail(
 	const op = "MailReceiptHandler.SendReceiptToMail"
 	log := h.log.WithOp(op)
 
-	if r.Header.Get("Content-Type") != "application/json" {
-		errStr := "invalid media type"
-		http.Error(w, errStr, http.StatusUnsupportedMediaType)
-		log.Info().Msg(errStr)
-		return
-	}
-
 	var data Receipt
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/niksmo/receipt/pkg/logger"
@@ -32,27 +31,21 @@ func (w *wrapper) WriteHeader(statusCode int) {
 type httpServer struct {
 	log logger.Logger
 	srv *http.Server
-	mux *http.ServeMux
 }
 
-func New(log logger.Logger, addr string) *httpServer {
+func New(
+	log logger.Logger, addr string, handler http.Handler,
+) *httpServer {
 	srv := &http.Server{
-		Addr:              addr,
+		Addr: addr,
+		Handler: http.TimeoutHandler(handler,
+			handlerTimeout, handlerTimeoutMsg),
 		ReadHeaderTimeout: 500 * time.Millisecond,
 		ReadTimeout:       2 * time.Second,
 		IdleTimeout:       1 * time.Second,
 	}
-	mux := http.NewServeMux()
-	server := &httpServer{log, srv, mux}
-	server.srv.Handler = mux
-	srv.Handler = http.TimeoutHandler(
-		server.logResponse(mux), handlerTimeout, handlerTimeoutMsg,
-	)
+	server := &httpServer{log, srv}
 	return server
-}
-
-func (s *httpServer) Mux() *http.ServeMux {
-	return s.mux
 }
 
 func (s *httpServer) Run(ctx context.Context, onFall func(err error)) {
@@ -82,18 +75,4 @@ func (s *httpServer) Close() {
 		return
 	}
 	log.Info().Msg("server closed")
-}
-
-func (s *httpServer) logResponse(next http.Handler) http.Handler {
-	log := func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		wrappee := &wrapper{ResponseWriter: w}
-		next.ServeHTTP(wrappee, r)
-		procDur := time.Since(start)
-		resDurStrMicro := strconv.FormatInt(procDur.Microseconds(), 10) + "μs"
-
-		s.log.Info().Str(
-			"procDur", resDurStrMicro).Int("status", wrappee.Status).Send()
-	}
-	return http.HandlerFunc(log)
 }
