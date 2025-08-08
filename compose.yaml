@@ -11,6 +11,29 @@ networks:
 
 services:
 
+  main-service:
+    build:
+      context: .
+      dockerfile: ./build/package/dockerfile
+      args:
+        - appname=receipt_service
+    container_name: main-service
+    ports:
+      - 127.0.0.1:8000:8080
+    networks:
+      - net
+      - notifier
+    environment:
+      RECEIPT_SEED_BROKERS: kafka-1:9094,kafka-2:9094,kafka-3:9094
+      RECEIPT_LOG_LEVEL: debug
+    depends_on:
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+
   mock-notifier:
     build:
       context: .
@@ -19,9 +42,11 @@ services:
         - appname=mock_notifier
     container_name: mock-notifier
     ports:
-      - 127.0.0.1:8080:8080
+      - 127.0.0.1:7000:8080
     networks:
       - notifier
+    environment:
+      NOTIFIER_LOG_LEVEL: debug
 
   kafka-1:
     image: bitnami/kafka:4.0.0
@@ -35,7 +60,7 @@ services:
       - net
     environment:
       KAFKA_CFG_NODE_ID: 1
-      KAFKA_CFG_ADVERTISED_LISTENERS: BROKER://kafka-1:9092,CLIENT://127.0.0.1:19094
+      KAFKA_CFG_ADVERTISED_LISTENERS: BROKER://kafka-1:9092,CLIENT://kafka-1:9094
       # common part
       KAFKA_CLUSTER_ID: 1
       KAFKA_CFG_PROCESS_ROLES: broker,controller
@@ -67,7 +92,7 @@ services:
       - net
     environment:
       KAFKA_CFG_NODE_ID: 2
-      KAFKA_CFG_ADVERTISED_LISTENERS: BROKER://kafka-2:9092,CLIENT://127.0.0.1:29094
+      KAFKA_CFG_ADVERTISED_LISTENERS: BROKER://kafka-2:9092,CLIENT://kafka-2:9094
       # common part
       KAFKA_CLUSTER_ID: 1
       KAFKA_CFG_PROCESS_ROLES: broker,controller
@@ -99,7 +124,7 @@ services:
       - net
     environment:
       KAFKA_CFG_NODE_ID: 3
-      KAFKA_CFG_ADVERTISED_LISTENERS: BROKER://kafka-3:9092,CLIENT://127.0.0.1:39094
+      KAFKA_CFG_ADVERTISED_LISTENERS: BROKER://kafka-3:9092,CLIENT://kafka-3:9094
       # common part
       KAFKA_CLUSTER_ID: 1
       KAFKA_CFG_PROCESS_ROLES: broker,controller
@@ -123,7 +148,7 @@ services:
     container_name: kafka-ui
     hostname: kafka-ui
     ports:
-      - 127.0.0.1:8000:8080
+      - 127.0.0.1:8080:8080
     networks:
       - net
     environment:
