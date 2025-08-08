@@ -48,5 +48,5 @@ func (l httpLog) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	statusCode := wrapper.statusCode
 
 	l.log.Info().Str(
-		"procDur", resDurStrMicro).Int("status", statusCode).Send()
+		"responseDuration", resDurStrMicro).Int("status", statusCode).Send()
 }

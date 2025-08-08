@@ -19,11 +19,11 @@ type SendMailHandler struct {
 func RegisterMailReceiptHandler(
 	log logger.Logger, mux *http.ServeMux, service port.MessagePrinter,
 ) {
-	h := &SendMailHandler{log, service}
+	h := SendMailHandler{log, service}
 	mux.HandleFunc("POST /v1/email", h.SendMail)
 }
 
-func (h *SendMailHandler) SendMail(
+func (h SendMailHandler) SendMail(
 	w http.ResponseWriter, r *http.Request,
 ) {
 	const op = "SendMailHandler.SendMail"
@@ -32,15 +32,17 @@ func (h *SendMailHandler) SendMail(
 	var data SendEmail
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
-		errStr := "invalid json"
+		errStr := "invalid JSON"
 		http.Error(w, errStr, http.StatusBadRequest)
 		log.Info().Err(err).Msg(errStr)
 		return
 	}
 
-	msg, err := sendEmailToDomain(data)
+	msg, err := h.toDomain(data)
 	if err != nil {
-
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Info().Err(err).Msg(err.Error())
+		return
 	}
 
 	msgID, err := h.service.PrintMessage(r.Context(), msg)
@@ -51,12 +53,11 @@ func (h *SendMailHandler) SendMail(
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	jsonEncoder := json.NewEncoder(w)
 	res := MessageCreated{MessageID: msgID.String()}
-	_ = jsonEncoder.Encode(res)
+	_ = json.NewEncoder(w).Encode(res)
 }
 
-func sendEmailToDomain(data SendEmail) (domain.Message, error) {
+func (h SendMailHandler) toDomain(data SendEmail) (domain.Message, error) {
 	if len(data.To) == 0 {
 		return domain.Message{}, errors.New("empty field: 'to'")
 	}

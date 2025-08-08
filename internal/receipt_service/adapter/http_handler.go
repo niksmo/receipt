@@ -18,11 +18,11 @@ type MailReceiptHandler struct {
 func RegisterMailReceiptHandler(
 	log logger.Logger, mux *http.ServeMux, service port.EventSaver,
 ) {
-	h := &MailReceiptHandler{log, service}
+	h := MailReceiptHandler{log, service}
 	mux.HandleFunc("POST /v1/receipt", h.SendReceiptToMail)
 }
 
-func (h *MailReceiptHandler) SendReceiptToMail(
+func (h MailReceiptHandler) SendReceiptToMail(
 	w http.ResponseWriter, r *http.Request,
 ) {
 	const op = "MailReceiptHandler.SendReceiptToMail"
@@ -37,7 +37,7 @@ func (h *MailReceiptHandler) SendReceiptToMail(
 		return
 	}
 
-	receipt := httpReceiptToDomain(data)
+	receipt := h.toDomain(data)
 	err = h.service.SaveEvent(r.Context(), receipt)
 	if err != nil {
 		http.Error(w, "", http.StatusServiceUnavailable)
@@ -49,7 +49,7 @@ func (h *MailReceiptHandler) SendReceiptToMail(
 	w.Write([]byte("Accept"))
 }
 
-func httpReceiptToDomain(data Receipt) domain.Receipt {
+func (h MailReceiptHandler) toDomain(data Receipt) domain.Receipt {
 	r := domain.NewReceipt()
 	r.Number = data.Number
 	r.Date = data.Date
