@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"io"
 	"net"
 
 	"github.com/niksmo/receipt/pkg/env"
@@ -65,8 +64,8 @@ func LoadConfig() Config {
 	return cfg
 }
 
-func (c Config) Print(w io.Writer) {
-	fmt.Fprintf(w,
+func (c Config) Print() {
+	fmt.Printf(
 		`Configuration:
 LogLevel:          %q
 HTTPServerAddress: %q
@@ -87,17 +86,17 @@ ConsumerGroup:     %q
 	)
 }
 
-func loadLogLevel() string {
-	logLevel, err := env.String("RECEIPT_LOG_LEVEL", nil)
+func LoadLogLevel(envValue string, defaultValue string) string {
+	logLevel, err := env.String(envValue, nil)
 	if errors.Is(err, env.ErrNotSet) {
-		return defaultLogLevel
+		return defaultValue
 	}
 	return logLevel
 }
 
-func loadHTTPServerAddr() (string, error) {
+func LoadHTTPServerAddr(envValue string, defaultValue string) (string, error) {
 	httpSrvAddr, err := env.String(
-		"RECEIPT_HTTP_ADDR",
+		envValue,
 		func(v string) error {
 			_, err := net.ResolveTCPAddr("tcp", v)
 			return err
@@ -106,11 +105,19 @@ func loadHTTPServerAddr() (string, error) {
 
 	if err != nil {
 		if errors.Is(err, env.ErrNotSet) {
-			return defaultHTTPServerAddr, nil
+			return defaultValue, nil
 		}
 		return "", err
 	}
 	return httpSrvAddr, nil
+}
+
+func loadLogLevel() string {
+	return LoadLogLevel("RECEIPT_LOG_LEVEL", defaultLogLevel)
+}
+
+func loadHTTPServerAddr() (string, error) {
+	return LoadHTTPServerAddr("RECEIPT_HTTP_ADDR", defaultHTTPServerAddr)
 }
 
 func loadBrokerConfig() (BrokerConfig, error) {

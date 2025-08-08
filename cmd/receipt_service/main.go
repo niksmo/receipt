@@ -1,10 +1,7 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/niksmo/receipt/config"
 	"github.com/niksmo/receipt/internal/receipt_service/adapter"
@@ -16,9 +13,9 @@ import (
 )
 
 func main() {
-	printAppTitle()
+	PrintAppTitle()
 	cfg := config.LoadConfig()
-	cfg.Print(os.Stdout)
+	cfg.Print()
 
 	log := logger.New(cfg.LogLevel)
 
@@ -29,7 +26,7 @@ func main() {
 		log, cfg.SeedBrokers, cfg.Topic)
 
 	kafkaProducer.InitTopic(sigCtx, cfg.Partitions,
-		cfg.ReplicationFactor, onInitTopicFall(log, stop))
+		cfg.ReplicationFactor, OnInitTopicFall(log, stop))
 
 	service := service.NewService(log, kafkaProducer)
 
@@ -48,19 +45,4 @@ func main() {
 	httpServer.Close()
 	kafkaProducer.Close()
 	kafkaConsumer.Close()
-}
-
-func onInitTopicFall(log logger.Logger, stop context.CancelFunc) func(error) {
-	return func(err error) {
-		log.Error().Err(err).Msg("failed to init broker topic")
-		stop()
-	}
-}
-
-func printAppTitle() {
-	fmt.Printf(`
-+-----------------------+
-|🧾RECEIPT APPLICATION🚀|
-+-----------------------+
-`)
 }

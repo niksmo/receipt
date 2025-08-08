@@ -28,8 +28,11 @@ func (s Service) PrintMessage(
 		return "", ctx.Err()
 	}
 
-	log.Debug().Str(
-		"to", msg.ToEmail).Str("subject", msg.Subject).Msg("send message")
+	msgID := domain.NewMessageID()
 
-	return domain.NewMessageID(), nil
+	log.Debug().Str(
+		"to", msg.ToEmail).Str(
+		"subject", msg.Subject).Str("messageID", msgID.String()).Send()
+
+	return msgID, nil
 }

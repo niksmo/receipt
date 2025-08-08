@@ -85,8 +85,6 @@ func (h SendMailHandler) toDomain(data SendEmail) (domain.Message, error) {
 }
 
 func (h SendMailHandler) allow(w http.ResponseWriter) bool {
-	reservation := h.limiter.Reserve()
-	reservation.Delay()
 	if h.limiter.Allow() {
 		return true
 	}
