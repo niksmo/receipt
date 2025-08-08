@@ -3,7 +3,6 @@ package httpserver
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -48,7 +47,7 @@ func New(
 	return server
 }
 
-func (s *httpServer) Run(ctx context.Context, onFall func(err error)) {
+func (s *httpServer) Run(stop context.CancelFunc) {
 	const op = "httpServer.Run"
 	log := s.log.WithOp(op)
 
@@ -58,7 +57,10 @@ func (s *httpServer) Run(ctx context.Context, onFall func(err error)) {
 		if errors.Is(err, http.ErrServerClosed) {
 			return
 		}
-		onFall(fmt.Errorf("%s: %w", op, err))
+		log.Error().Err(err).Msg("http server crashed")
+		if stop != nil {
+			stop()
+		}
 	}
 }
 

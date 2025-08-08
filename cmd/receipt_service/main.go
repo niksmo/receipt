@@ -2,10 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/niksmo/receipt/config"
 	"github.com/niksmo/receipt/internal/receipt_service/adapter"
@@ -13,15 +12,17 @@ import (
 	"github.com/niksmo/receipt/pkg/httpserver"
 	"github.com/niksmo/receipt/pkg/logger"
 	"github.com/niksmo/receipt/pkg/middleware"
+	"github.com/niksmo/receipt/pkg/sig"
 )
 
 func main() {
+	printAppTitle()
 	cfg := config.LoadConfig()
 	cfg.Print(os.Stdout)
 
 	log := logger.New(cfg.LogLevel)
 
-	sigCtx, stop := notifyContext()
+	sigCtx, stop := sig.NotifyContext()
 	defer stop()
 
 	kafkaProducer := adapter.NewKafkaProducer(
@@ -40,22 +41,13 @@ func main() {
 
 	httpHandler := middleware.LogResposeStatus(log, middleware.AcceptJSON(mux))
 	httpServer := httpserver.New(log, cfg.HTTPServerAddr, httpHandler)
-	go httpServer.Run(sigCtx, onHTTPServerFall(log, stop))
+	go httpServer.Run(stop)
 	go kafkaConsumer.Run(sigCtx)
 
 	<-sigCtx.Done()
 	httpServer.Close()
 	kafkaProducer.Close()
 	kafkaConsumer.Close()
-}
-
-func notifyContext() (context.Context, context.CancelFunc) {
-	return signal.NotifyContext(
-		context.Background(),
-		syscall.SIGINT,
-		syscall.SIGQUIT,
-		syscall.SIGTERM,
-	)
 }
 
 func onInitTopicFall(log logger.Logger, stop context.CancelFunc) func(error) {
@@ -65,9 +57,10 @@ func onInitTopicFall(log logger.Logger, stop context.CancelFunc) func(error) {
 	}
 }
 
-func onHTTPServerFall(log logger.Logger, stop context.CancelFunc) func(error) {
-	return func(err error) {
-		log.Error().Err(err).Msg("http server crashed")
-		stop()
-	}
+func printAppTitle() {
+	fmt.Printf(`
++-----------------------+
+|🧾RECEIPT APPLICATION🚀|
++-----------------------+
+`)
 }

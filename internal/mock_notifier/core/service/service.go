@@ -14,7 +14,11 @@ type Service struct {
 	log logger.Logger
 }
 
-func (s *Service) PrintMessage(
+func NewService(log logger.Logger) Service {
+	return Service{log}
+}
+
+func (s Service) PrintMessage(
 	ctx context.Context, msg domain.Message,
 ) (domain.MessageID, error) {
 	const op = "Service.PrintMessage"

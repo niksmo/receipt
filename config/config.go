@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
-	"strconv"
-	"strings"
+
+	"github.com/niksmo/receipt/pkg/env"
 )
 
 const (
 	defaultLogLevel       = "info"
-	defaultHTTPServerAddr = "localhost:8080"
+	defaultHTTPServerAddr = ":8080"
 
 	defaultTopic         = "mail-receipt"
 	minPartitions        = 1
@@ -26,8 +25,6 @@ var (
 		"localhost:19094", "localhost:29094", "localhost:39094",
 	}
 )
-
-var errEnvNotSet = errors.New("the env variable is not specified")
 
 type BrokerConfig struct {
 	SeedBrokers       []string
@@ -91,15 +88,15 @@ ConsumerGroup:     %q
 }
 
 func loadLogLevel() string {
-	logLevel, err := envString("RECEIPT_LOG_LEVEL", nil)
-	if errors.Is(err, errEnvNotSet) {
+	logLevel, err := env.String("RECEIPT_LOG_LEVEL", nil)
+	if errors.Is(err, env.ErrNotSet) {
 		return defaultLogLevel
 	}
 	return logLevel
 }
 
 func loadHTTPServerAddr() (string, error) {
-	httpSrvAddr, err := envString(
+	httpSrvAddr, err := env.String(
 		"RECEIPT_HTTP_ADDR",
 		func(v string) error {
 			_, err := net.ResolveTCPAddr("tcp", v)
@@ -108,7 +105,7 @@ func loadHTTPServerAddr() (string, error) {
 	)
 
 	if err != nil {
-		if errors.Is(err, errEnvNotSet) {
+		if errors.Is(err, env.ErrNotSet) {
 			return defaultHTTPServerAddr, nil
 		}
 		return "", err
@@ -140,7 +137,7 @@ func loadBrokerConfig() (BrokerConfig, error) {
 }
 
 func loadSeedBrokers() ([]string, error) {
-	v, err := envStringS(
+	v, err := env.StringS(
 		"RECEIPT_SEED_BROKERS",
 		func(v []string) error {
 			for _, brokerAddr := range v {
@@ -154,7 +151,7 @@ func loadSeedBrokers() ([]string, error) {
 	)
 
 	if err != nil {
-		if errors.Is(err, errEnvNotSet) {
+		if errors.Is(err, env.ErrNotSet) {
 			return defaultSeedBrokers, nil
 		}
 		return nil, err
@@ -164,15 +161,15 @@ func loadSeedBrokers() ([]string, error) {
 }
 
 func loadTopic() string {
-	v, err := envString("RECEIPT_TOPIC", nil)
-	if errors.Is(err, errEnvNotSet) {
+	v, err := env.String("RECEIPT_TOPIC", nil)
+	if errors.Is(err, env.ErrNotSet) {
 		return defaultTopic
 	}
 	return v
 }
 
 func loadPartitions() int {
-	v, err := envInt(
+	v, err := env.Int(
 		"RECEIPT_PARTITIONS",
 		func(v int) error {
 			if v < minPartitions {
@@ -190,7 +187,7 @@ func loadPartitions() int {
 }
 
 func loadReplicationFactor() int {
-	v, err := envInt(
+	v, err := env.Int(
 		"RECEIPT_REPLICATION_FACTOR",
 		func(v int) error {
 			if v < minReplicationFactor {
@@ -207,8 +204,8 @@ func loadReplicationFactor() int {
 }
 
 func loadConsumerGroup() string {
-	v, err := envString("RECEIPT_CONSUMER_GROUP", nil)
-	if errors.Is(err, errEnvNotSet) {
+	v, err := env.String("RECEIPT_CONSUMER_GROUP", nil)
+	if errors.Is(err, env.ErrNotSet) {
 		return defaultConsumerGroup
 	}
 	return v
@@ -216,55 +213,4 @@ func loadConsumerGroup() string {
 
 func errsOnLoad(errs []error) bool {
 	return len(errs) != 0
-}
-
-func envString(name string, validationFunc func(v string) error) (string, error) {
-	v, set := os.LookupEnv(name)
-	if !set {
-		return "", errEnvNotSet
-	}
-	if validationFunc != nil {
-		if err := validationFunc(v); err != nil {
-			return "", err
-		}
-	}
-
-	return v, nil
-}
-
-func envInt(name string, validationFunc func(v int) error) (int, error) {
-	vStr, set := os.LookupEnv(name)
-	if !set {
-		return 0, errEnvNotSet
-	}
-
-	v, err := strconv.Atoi(vStr)
-	if err != nil {
-		return 0, fmt.Errorf("env %s invalid 'int' value: %w", name, err)
-	}
-
-	if validationFunc != nil {
-		if err := validationFunc(v); err != nil {
-			return 0, err
-		}
-	}
-
-	return v, nil
-}
-
-func envStringS(name string, validationFunc func(v []string) error) ([]string, error) {
-	v, set := os.LookupEnv(name)
-	if !set {
-		return nil, errEnvNotSet
-	}
-
-	s := strings.Split(v, ",")
-
-	if validationFunc != nil {
-		if err := validationFunc(s); err != nil {
-			return nil, err
-		}
-	}
-
-	return s, nil
 }

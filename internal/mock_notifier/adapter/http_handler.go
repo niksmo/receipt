@@ -5,21 +5,28 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/niksmo/receipt/internal/mock_notifier/core/domain"
 	"github.com/niksmo/receipt/internal/mock_notifier/core/port"
 	"github.com/niksmo/receipt/pkg/logger"
+	"golang.org/x/time/rate"
 )
 
 type SendMailHandler struct {
 	log     logger.Logger
 	service port.MessagePrinter
+	limiter *rate.Limiter
 }
 
-func RegisterMailReceiptHandler(
-	log logger.Logger, mux *http.ServeMux, service port.MessagePrinter,
+func RegisterSendMailHandler(
+	log logger.Logger,
+	mux *http.ServeMux,
+	service port.MessagePrinter,
+	limit int,
 ) {
-	h := SendMailHandler{log, service}
+	limiter := createLimiter(limit)
+	h := SendMailHandler{log, service, limiter}
 	mux.HandleFunc("POST /v1/email", h.SendMail)
 }
 
@@ -28,6 +35,11 @@ func (h SendMailHandler) SendMail(
 ) {
 	const op = "SendMailHandler.SendMail"
 	log := h.log.WithOp(op)
+
+	if !h.allow(w) {
+		log.Info().Msg("request limited")
+		return
+	}
 
 	var data SendEmail
 	err := json.NewDecoder(r.Body).Decode(&data)
@@ -70,4 +82,25 @@ func (h SendMailHandler) toDomain(data SendEmail) (domain.Message, error) {
 	}
 
 	return msg, nil
+}
+
+func (h SendMailHandler) allow(w http.ResponseWriter) bool {
+	reservation := h.limiter.Reserve()
+	reservation.Delay()
+	if h.limiter.Allow() {
+		return true
+	}
+
+	rateLimit := strconv.Itoa(int(h.limiter.Limit()))
+	w.Header().Set("Retry-After", "1")
+	w.Header().Set("X-RateLimit-Limit", rateLimit)
+	http.Error(w, "too many requests", http.StatusTooManyRequests)
+	return false
+}
+
+func createLimiter(limit int) *rate.Limiter {
+	if limit <= 0 {
+		return rate.NewLimiter(rate.Inf, 0)
+	}
+	return rate.NewLimiter(rate.Limit(limit), 1)
 }
