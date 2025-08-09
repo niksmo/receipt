@@ -125,7 +125,7 @@ services:
     container_name: kafka-ui
     hostname: kafka-ui
     ports:
-      - 127.0.0.1:6000:8080
+      - 127.0.0.1:8000:8080
     networks:
       - net
     environment:

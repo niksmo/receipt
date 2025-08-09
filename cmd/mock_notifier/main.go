@@ -11,12 +11,6 @@ import (
 	"github.com/niksmo/receipt/pkg/sig"
 )
 
-const (
-	defaultLogLevel       = "info"
-	defaultHTTPServerAddr = ":8080"
-	defaultRateLimit      = 1000 // RPS
-)
-
 func main() {
 	PrintAppTitle()
 

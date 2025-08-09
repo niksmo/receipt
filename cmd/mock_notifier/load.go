@@ -8,6 +8,12 @@ import (
 	"github.com/niksmo/receipt/pkg/env"
 )
 
+const (
+	defaultLogLevel       = "info"
+	defaultHTTPServerAddr = ":8080"
+	defaultRateLimit      = 1000 // RPS
+)
+
 type AppConfig struct {
 	LogLevel       string
 	HTTPServerAddr string
